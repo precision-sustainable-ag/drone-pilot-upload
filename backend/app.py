@@ -29,11 +29,40 @@ def acceptUpload():
         # print(flask.request.form)
         if flask.request.method == 'POST':
             formData = flask.request.form
-            metadata = formData['metadata']
+            metadata = json.loads(formData['metadata'])
             files = flask.request.files.getlist("files")
-            utils.saveFiles(files, metadata)
+            # print(files)
 
-        return flask.Response(response='success', status=200)
+            # determine flight type
+            if any('.tif' in file.filename.lower() for file in files):
+                flight_type = 'multispectral'
+            elif any('.jpg' in file.filename.lower() for file in files):
+                flight_type = 'rgb'
+            else:
+                status_code, response = 400, {'status': 'failed', 'reason':
+                    'images not present'}
+                return flask.Response(response=json.dumps(response),
+                                      status=status_code)
+
+            file_details = utils.createFolderStructure(flight_type, files)
+            file_details = utils.getExifInfo(file_details)
+            metadata['camera_make'] = file_details['camera_make']
+            metadata['camera_model'] = file_details['camera_model']
+            metadata['mission_start_time'] = file_details['mission_start_time']
+            metadata['mission_end_time'] = file_details['mission_end_time']
+            metadata['color_representation'] = file_details['flight_type']
+            metadata = json.dumps(metadata)
+            # print(file_details)
+            conn, cursor = utils.connectDb()
+            utils.insertDb(conn, cursor, file_details, metadata)
+            # utils.insertDb(conn,cursor,file_details)
+            # print(metadata)
+            # print(flight_type)
+            # print(files)
+            # utils.saveFiles(files, metadata)
+
+        status_code, response = 200, {'status': 'success'}
+        return flask.Response(response=json.dumps(response), status=status_code)
     except Exception as e:
         print(e)
         status_code, response = 400, {'status': 'error, bad req'}

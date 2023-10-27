@@ -31,7 +31,8 @@ const FolderUpload = () => {
     });
     const metadataJson = {
       'pilotName': formData.pilotName,
-      'weatherConditions': formData.weatherConditions
+      'cloudiness': formData.cloudiness,
+      'comments': formData.comments
     };
     formDataToSend.append('action', 'imageUpload');
     formDataToSend.append('metadata', JSON.stringify(metadataJson));
@@ -77,13 +78,17 @@ const FolderUpload = () => {
           onChange={handleFileChange}
         />
       </div>
-      <div className="col-4">
-        <label>Pilot Name:</label>
+      <div className="col-4" style={{padding: '10px'}}>
+        <label>Pilot Name:  </label>
         <input type="text" name="pilotName" value={formData.pilotName} onChange={handleInputChange} />
       </div>
-      <div className="col-4">
-        <label>Weather Conditions:</label>
-        <input type="text" name="weatherConditions" value={formData.weatherConditions} onChange={handleInputChange} />
+      <div className="col-4" style={{padding: '10px'}}>
+        <label>Cloudiness:  </label>
+        <input type="text" name="cloudiness" value={formData.cloudiness} onChange={handleInputChange} />
+      </div>
+      <div className="col-4" style={{padding: '10px'}}>
+        <label>Comments:  </label>
+        <input type="text" name="comments" value={formData.comments} onChange={handleInputChange} style={{height: '25vh', width: '25vh'}}/>
       </div>
       <Button
         variant="contained"
