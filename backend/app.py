@@ -51,7 +51,7 @@ def acceptUpload():
             metadata['mission_start_time'] = file_details['mission_start_time']
             metadata['mission_end_time'] = file_details['mission_end_time']
             metadata['color_representation'] = file_details['flight_type']
-            metadata = json.dumps(metadata)
+            metadata = json.dumps(metadata, default=str)
             # print(file_details)
             conn, cursor = utils.connectDb()
             utils.insertDb(conn, cursor, file_details, metadata)
