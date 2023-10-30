@@ -22,6 +22,10 @@ def ping():  # put application's code here
                           mimetype='application/json')
 
 
+def file_sorter(x):
+    return x.filename
+
+
 @app.route('/imgproc', methods=['POST'])
 def acceptUpload():
     # logging.info(flask.request)
@@ -31,9 +35,10 @@ def acceptUpload():
             formData = flask.request.form
             metadata = json.loads(formData['metadata'])
             files = flask.request.files.getlist("files")
-            # print(files)
-
+            files = sorted(files, key=file_sorter)
+            # files.sort()
             # determine flight type
+            # TODO: check if there's a way to remove/reduce the loop complexity
             if any('.tif' in file.filename.lower() for file in files):
                 flight_type = 'multispectral'
             elif any('.jpg' in file.filename.lower() for file in files):
@@ -53,13 +58,9 @@ def acceptUpload():
             metadata['color_representation'] = file_details['flight_type']
             metadata = json.dumps(metadata, default=str)
             # print(file_details)
-            conn, cursor = utils.connectDb()
-            utils.insertDb(conn, cursor, file_details, metadata)
-            # utils.insertDb(conn,cursor,file_details)
-            # print(metadata)
-            # print(flight_type)
-            # print(files)
-            # utils.saveFiles(files, metadata)
+
+            # conn, cursor = utils.connectDb()
+            # utils.insertDb(conn, cursor, file_details, metadata)
 
         status_code, response = 200, {'status': 'success'}
         return flask.Response(response=json.dumps(response), status=status_code)

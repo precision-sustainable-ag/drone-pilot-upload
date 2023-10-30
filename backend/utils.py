@@ -4,32 +4,130 @@ import psycopg2
 from PIL import Image
 from PIL.ExifTags import TAGS
 from datetime import datetime
+from pyzxing import BarCodeReader
 
 
-def findRadiancePanels():
+# TODO: Standardize datetime (maybe set all to UTC)
+
+def findRadiancePanels(files, numBands, panelFolder, panelList):
     # TODO
-    print('todo')
+    # get first few in one band
+    # get last few in one band
+    counter = 0
+    possible_panels = []
+    # print(files)
+    for file in files:
+        if counter >= 5:
+            break
+        if '_1.tif' in file:
+            possible_panels.append(file)
+            counter += 1
+
+    counter = 0
+    for file in reversed(files):
+        if counter >= 5:
+            break
+        if '_1.tif' in file:
+            possible_panels.append(file)
+            counter += 1
+
+    panels = []
+    reader = BarCodeReader()
+    for file in possible_panels:
+        results = reader.decode(file)
+        if 'format' in results[0].keys():
+            panels.append(file)
+    cleanedFileList = files
+    for panel in panels:
+        newUniqueFileName = str(uuid.uuid4())
+        panelFileName = '_'.join(panel.split('_')[:-1])
+        for i in range(1, numBands + 1):
+            fileName = panelFileName + f'_{i}.tif'
+            newFilePath = os.path.join(panelFolder,
+                                       newUniqueFileName + f'_{i}.tif')
+            os.rename(fileName, newFilePath)
+            cleanedFileList.remove(fileName)
+            panelList.append(newFilePath)
+
+    return cleanedFileList, panelList
+
+
+def calcBands(files):
+    files = [file for file in files if '.tif' in file]
+    current_file = '_'.join(os.path.split(files[0])[1].split('_')[:2])
+    numBands = 1
+    for file in files[1:]:
+        if '_'.join(os.path.split(file)[1].split('_')[:2]) == current_file:
+            numBands += 1
+        else:
+            break
+    return numBands
 
 
 def createFolderStructure(flight_type, files, location='./flights/'):
     flight_id = str(uuid.uuid4())
     if not os.path.exists(os.path.join(location, flight_id)):
         os.makedirs(os.path.join(location, flight_id))
+
+    image_folder = os.path.join(location, flight_id, 'images')
+    other_folder = os.path.join(location, flight_id, 'other_files')
+    if not os.path.exists(image_folder):
+        os.makedirs(image_folder)
+    if not os.path.exists(other_folder):
+        os.makedirs(other_folder)
+
     image_list = []
     panel_list = []
     other_list = []
     # TODO
     if flight_type == 'multispectral':
-        findRadiancePanels()
+        # add files to tmp storage and then use them ahead
+        temp_folder = os.path.join(location, flight_id, 'temp_storage')
+        if not os.path.exists(temp_folder):
+            os.makedirs(temp_folder)
+        temp_files = []
+        for file in files:
+            filepath = os.path.join(temp_folder, os.path.split(
+                file.filename)[1].lower())
+            file.save(filepath)
+            temp_files.append(filepath)
+        temp_files.sort()
+
+        numBands = calcBands(temp_files)
+        panel_folder = os.path.join(location, flight_id, 'panels')
+        if not os.path.exists(panel_folder):
+            os.makedirs(panel_folder)
+
+        temp_files, panel_list = findRadiancePanels(temp_files, numBands,
+                                                    panel_folder, panel_list)
+        mapping_dict = {}
+        for file in temp_files:
+            name, file_ext = os.path.splitext(file)
+            # TODO: check if these filenames provide information that needs
+            #  to be preseved
+            if file_ext.lower() != '.tif':
+                filepath = os.path.join(other_folder,
+                                        str(uuid.uuid4()) + file_ext.lower())
+                os.rename(file, filepath)
+                other_list.append(filepath)
+            else:
+                fileName = '_'.join(file.split('_')[:-1])
+                if fileName not in mapping_dict.keys():
+                    mapping_dict[fileName] = str(uuid.uuid4())
+                bandNumber = file.split('_')[-1]
+                newFilePath = os.path.join(image_folder,
+                                           mapping_dict[fileName] +
+                                           f'_{bandNumber}')
+                os.rename(file, newFilePath)
+                image_list.append(newFilePath)
+
+        os.remove(temp_folder)
+
     elif flight_type == 'rgb':
-        image_folder = os.path.join(location, flight_id, 'images')
-        other_folder = os.path.join(location, flight_id, 'other')
-        if not os.path.exists(image_folder):
-            os.makedirs(image_folder)
-        if not os.path.exists(other_folder):
-            os.makedirs(other_folder)
         for file in files:
             name, file_ext = os.path.splitext(file.filename)
+            # TODO: check if these filenames provide information that needs
+            #  to be preseved
             if file_ext.lower() != '.jpg':
                 filepath = os.path.join(other_folder,
                                         str(uuid.uuid4()) + file_ext.lower())
@@ -46,12 +144,14 @@ def createFolderStructure(flight_type, files, location='./flights/'):
         'images': image_list,
         'panels': panel_list,
         'other_files': other_list,
-        'flight_type': flight_type
+        'flight_type': flight_type,
+        'upload_time': datetime.now()
     }
     return file_details
 
 
 def getExifInfo(file_details):
+    # TODO: exifinfo for multispec
     camera_make = ''
     camera_model = ''
     print(file_details)
