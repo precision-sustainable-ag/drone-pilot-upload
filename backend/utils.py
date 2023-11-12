@@ -1,10 +1,12 @@
 import os
 import uuid
 import psycopg2
+import exiftool
 from PIL import Image
 from PIL.ExifTags import TAGS
 from datetime import datetime
 from pyzxing import BarCodeReader
+from config import config
 
 
 # TODO: Standardize datetime (maybe set all to UTC)
@@ -150,36 +152,47 @@ def createFolderStructure(flight_type, files, location='./flights/'):
     return file_details
 
 
+def calcGSD(exif_info):
+    sensor_width = config[exif_info['EXIF:Model']]['sensor_width']
+    altitude = exif_info['EXIF:GPSAltitude']
+    image_width = exif_info['File:ImageWidth']
+    focal_length = exif_info['EXIF:FocalLength']
+    return (altitude * sensor_width * 100) / (image_width * focal_length)
+
+
 def getExifInfo(file_details):
     # TODO: exifinfo for multispec
-    camera_make = ''
-    camera_model = ''
-    print(file_details)
+    # TODO: get gps info added (and bounding box for the whole flight)
+
+    et = exiftool.ExifTool()
+    first_image_exif_info = et.get_metadata(file_details['images'][0])
+    camera_make = first_image_exif_info['EXIF:Make']
+    camera_model = first_image_exif_info['EXIF:Model']
+    file_details['camera_make'] = camera_make
+    file_details['camera_model'] = camera_model
+    file_details['gsd'] = calcGSD(first_image_exif_info)
+    file_details['file_type'] = first_image_exif_info['File:FileType']
+    # max_date, min_date = datetime.now()
+    date_format = '%Y:%m:%d %H:%M:%S'
+    # datetime.strptime(date_string, format_string)
+    min_date = max_date = datetime.strptime(
+        first_image_exif_info['DateTime'], date_format)
+
+    for image in file_details['images']:
+        exif_info = et.get_metadata(image)
+        image_date = datetime.strptime(exif_info['EXIF:CreateDate'],
+                                       date_format)
+        if image_date < min_date:
+            min_date = image_date
+        if image_date > max_date:
+            max_date = image_date
+    file_details['mission_start_time'] = min_date
+    file_details['mission_end_time'] = max_date
+
     if file_details['flight_type'] == 'rgb':
-        first_image_exif_info = Image.open(file_details['images'][0]).getexif()
-        first_image_exif_info = {TAGS.get(k, k): v for k, v in
-                                 first_image_exif_info.items()}
-        camera_make = first_image_exif_info['Make']
-        camera_model = first_image_exif_info['Model']
-        file_details['camera_make'] = camera_make
-        file_details['camera_model'] = camera_model
-        # max_date, min_date = datetime.now()
-        date_format = '%Y:%m:%d %H:%M:%S'
-        # datetime.strptime(date_string, format_string)
-        min_date = max_date = datetime.strptime(
-            first_image_exif_info['DateTime'], date_format)
-        for image in file_details['images']:
-            exif_info = Image.open(
-                image).getexif()
-            exif_info = {TAGS.get(k, k): v for k, v in
-                         exif_info.items()}
-            image_date = datetime.strptime(exif_info['DateTime'], date_format)
-            if image_date < min_date:
-                min_date = image_date
-            if image_date > max_date:
-                max_date = image_date
-        file_details['mission_start_time'] = min_date
-        file_details['mission_end_time'] = max_date
+        print('rgb')
+    elif file_details['flight_type'] == 'multispectral':
+        print('multispec')
     return file_details
 
 
