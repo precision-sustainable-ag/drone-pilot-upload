@@ -51,16 +51,22 @@ def acceptUpload():
 
             file_details = utils.createFolderStructure(flight_type, files)
             file_details = utils.getExifInfo(file_details)
-            metadata['camera_make'] = file_details['camera_make']
-            metadata['camera_model'] = file_details['camera_model']
-            metadata['mission_start_time'] = file_details['mission_start_time']
-            metadata['mission_end_time'] = file_details['mission_end_time']
-            metadata['color_representation'] = file_details['flight_type']
-            metadata = json.dumps(metadata, default=str)
+            file_details['pilot_name'] = metadata['pilotName']
+            file_details['cloudiness'] = metadata['cloudiness']
+            file_details['comments'] = metadata['comments']
+            # metadata['camera_make'] = file_details['camera_make']
+            # metadata['camera_model'] = file_details['camera_model']
+            # metadata['mission_start_time'] = file_details['mission_start_time']
+            # metadata['mission_end_time'] = file_details['mission_end_time']
+            # metadata['color_representation'] = file_details['flight_type']
+            # metadata = json.dumps(metadata, default=str)
             # print(file_details)
-
+            # print("********")
+            # print("********")
+            # print(metadata)
             # conn, cursor = utils.connectDb()
             # utils.insertDb(conn, cursor, file_details, metadata)
+            utils.insertDb(file_details)
 
         status_code, response = 200, {'status': 'success'}
         return flask.Response(response=json.dumps(response), status=status_code)

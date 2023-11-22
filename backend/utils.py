@@ -1,12 +1,14 @@
 import os
 import uuid
-import psycopg2
 import exiftool
-from PIL import Image
-from PIL.ExifTags import TAGS
+import pymongo
+# import psycopg2
+# from PIL import Image
+# from PIL.ExifTags import TAGS
 from datetime import datetime
 from pyzxing import BarCodeReader
 from config import config
+
 
 
 # TODO: Standardize datetime (maybe set all to UTC)
@@ -89,10 +91,11 @@ def createFolderStructure(flight_type, files, location='./flights/'):
             os.makedirs(temp_folder)
         temp_files = []
         for file in files:
-            filepath = os.path.join(temp_folder, os.path.split(
-                file.filename)[1].lower())
-            file.save(filepath)
-            temp_files.append(filepath)
+            if '.ds_store' not in file.filename.lower():
+                filepath = os.path.join(temp_folder, os.path.split(
+                    file.filename)[1].lower())
+                file.save(filepath)
+                temp_files.append(filepath)
         temp_files.sort()
 
         numBands = calcBands(temp_files)
@@ -107,6 +110,7 @@ def createFolderStructure(flight_type, files, location='./flights/'):
             name, file_ext = os.path.splitext(file)
             # TODO: check if these filenames provide information that needs
             #  to be preseved
+            # TODO: fix .ds_store errors originating from mac file system
             if file_ext.lower() != '.tif':
                 filepath = os.path.join(other_folder,
                                         str(uuid.uuid4()) + file_ext.lower())
@@ -123,23 +127,25 @@ def createFolderStructure(flight_type, files, location='./flights/'):
                 os.rename(file, newFilePath)
                 image_list.append(newFilePath)
 
-        os.remove(temp_folder)
+        # os.remove(temp_folder)
+        os.rmdir(temp_folder)
 
     elif flight_type == 'rgb':
         for file in files:
-            name, file_ext = os.path.splitext(file.filename)
-            # TODO: check if these filenames provide information that needs
-            #  to be preseved
-            if file_ext.lower() != '.jpg':
-                filepath = os.path.join(other_folder,
-                                        str(uuid.uuid4()) + file_ext.lower())
-                file.save(filepath)
-                other_list.append(filepath)
-            else:
-                filepath = os.path.join(image_folder,
-                                        str(uuid.uuid4()) + file_ext.lower())
-                file.save(filepath)
-                image_list.append(filepath)
+            if '.ds_store' not in file.filename.lower():
+                name, file_ext = os.path.splitext(file.filename)
+                # TODO: check if these filenames provide information that needs
+                #  to be preseved
+                if file_ext.lower() != '.jpg':
+                    filepath = os.path.join(other_folder,
+                                            str(uuid.uuid4()) + file_ext.lower())
+                    file.save(filepath)
+                    other_list.append(filepath)
+                else:
+                    filepath = os.path.join(image_folder,
+                                            str(uuid.uuid4()) + file_ext.lower())
+                    file.save(filepath)
+                    image_list.append(filepath)
 
     file_details = {
         'flight_id': flight_id,
@@ -152,12 +158,17 @@ def createFolderStructure(flight_type, files, location='./flights/'):
     return file_details
 
 
-def calcGSD(exif_info):
-    sensor_width = config[exif_info['EXIF:Model']]['sensor_width']
+def calcGSD(exif_info,flight_type):
+    sensor_width = config['sensor_information'][exif_info['EXIF:Model']][
+        'sensor_width']
     altitude = exif_info['EXIF:GPSAltitude']
-    image_width = exif_info['File:ImageWidth']
+    if flight_type == 'mutispectral':
+        image_width = exif_info['EXIF:ImageWidth']
+    elif flight_type == 'rgb':
+        image_width = exif_info['EXIF:ExifImageWidth']
     focal_length = exif_info['EXIF:FocalLength']
     return (altitude * sensor_width * 100) / (image_width * focal_length)
+
 
 
 def getExifInfo(file_details):
@@ -165,27 +176,31 @@ def getExifInfo(file_details):
     # TODO: get gps info added (and bounding box for the whole flight)
 
     et = exiftool.ExifTool()
-    first_image_exif_info = et.get_metadata(file_details['images'][0])
+    # print(et)
+    # print(file_details['images'][0])
+    with exiftool.ExifTool() as et:
+        first_image_exif_info = et.get_metadata(file_details['images'][0])
     camera_make = first_image_exif_info['EXIF:Make']
     camera_model = first_image_exif_info['EXIF:Model']
     file_details['camera_make'] = camera_make
     file_details['camera_model'] = camera_model
-    file_details['gsd'] = calcGSD(first_image_exif_info)
+    file_details['gsd'] = calcGSD(first_image_exif_info, file_details[
+        'flight_type'])
     file_details['file_type'] = first_image_exif_info['File:FileType']
     # max_date, min_date = datetime.now()
     date_format = '%Y:%m:%d %H:%M:%S'
     # datetime.strptime(date_string, format_string)
     min_date = max_date = datetime.strptime(
-        first_image_exif_info['DateTime'], date_format)
-
-    for image in file_details['images']:
-        exif_info = et.get_metadata(image)
-        image_date = datetime.strptime(exif_info['EXIF:CreateDate'],
-                                       date_format)
-        if image_date < min_date:
-            min_date = image_date
-        if image_date > max_date:
-            max_date = image_date
+        first_image_exif_info['EXIF:CreateDate'], date_format)
+    with exiftool.ExifTool() as et:
+        for image in file_details['images']:
+            exif_info = et.get_metadata(image)
+            image_date = datetime.strptime(exif_info['EXIF:CreateDate'],
+                                           date_format)
+            if image_date < min_date:
+                min_date = image_date
+            if image_date > max_date:
+                max_date = image_date
     file_details['mission_start_time'] = min_date
     file_details['mission_end_time'] = max_date
 
@@ -195,7 +210,13 @@ def getExifInfo(file_details):
         print('multispec')
     return file_details
 
-
+def insertDb(file_details):
+    client = pymongo.MongoClient('localhost', username='admin',
+                                 # password=getpass('Password: '),
+                                 password='yolo',
+                                 authMechanism='SCRAM-SHA-256')
+    collection = client['drone-pilot']['flight-information']
+    collection.insert_one(file_details)
 # def saveFiles(files, metadata, location='./images/'):
 #     experiment_id = str(uuid.uuid4())
 #     # conscious choice of keeping the connection open till all files are
@@ -213,13 +234,13 @@ def getExifInfo(file_details):
 #     conn.close()
 
 
-def connectDb():
-    connection = psycopg2.connect(database="drone_pilot",
-                                  host="localhost",
-                                  user="admin",
-                                  password="password",
-                                  port="5432")
-    return connection, connection.cursor()
+# def connectDb():
+#     connection = psycopg2.connect(database="drone_pilot",
+#                                   host="localhost",
+#                                   user="admin",
+#                                   password="password",
+#                                   port="5432")
+#     return connection, connection.cursor()
 
 
 # def insertDb(conn, cursor, file_location, experiment_id, metadata):
@@ -232,31 +253,34 @@ def connectDb():
 #     except Exception as e:
 #         print(e)
 
-def insertDb(conn, cursor, file_details, metadata):
-    for file_location in file_details['images']:
-        try:
-            cursor.execute(
-                f"""insert into file_information(experiment_id,file_location, metadata) 
-                values('{file_details["flight_id"]}','{file_location}', 
-                '{metadata}');""")
-            conn.commit()
-        except Exception as e:
-            print(e)
-    for file_location in file_details['panels']:
-        try:
-            cursor.execute(
-                f"""insert into file_information(experiment_id,file_location, metadata) 
-                values('{file_details["flight_id"]}','{file_location}', 
-                '{metadata}');""")
-            conn.commit()
-        except Exception as e:
-            print(e)
-    for file_location in file_details['other_files']:
-        try:
-            cursor.execute(
-                f"""insert into file_information(experiment_id,file_location, metadata) 
-                values('{file_details["flight_id"]}','{file_location}', 
-                '{metadata}');""")
-            conn.commit()
-        except Exception as e:
-            print(e)
+# def insertDb(conn, cursor, file_details, metadata):
+#     print(file_details)
+#     print("*********")
+#     print(metadata)
+#     # for file_location in file_details['images']:
+#     #     try:
+#     #         cursor.execute(
+#     #             f"""insert into file_information(experiment_id,file_location, metadata)
+#     #             values('{file_details["flight_id"]}','{file_location}',
+#     #             '{metadata}');""")
+#     #         conn.commit()
+#     #     except Exception as e:
+#     #         print(e)
+#     # for file_location in file_details['panels']:
+#     #     try:
+#     #         cursor.execute(
+#     #             f"""insert into file_information(experiment_id,file_location, metadata)
+#     #             values('{file_details["flight_id"]}','{file_location}',
+#     #             '{metadata}');""")
+#     #         conn.commit()
+#     #     except Exception as e:
+#     #         print(e)
+#     # for file_location in file_details['other_files']:
+#     #     try:
+#     #         cursor.execute(
+#     #             f"""insert into file_information(experiment_id,file_location, metadata)
+#     #             values('{file_details["flight_id"]}','{file_location}',
+#     #             '{metadata}');""")
+#     #         conn.commit()
+#     #     except Exception as e:
+#     #         print(e)
