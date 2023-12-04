@@ -8,6 +8,8 @@ import pymongo
 from datetime import datetime
 from pyzxing import BarCodeReader
 from config import config
+import pandas as pd
+import geopandas
 
 
 
@@ -192,6 +194,8 @@ def getExifInfo(file_details):
     # datetime.strptime(date_string, format_string)
     min_date = max_date = datetime.strptime(
         first_image_exif_info['EXIF:CreateDate'], date_format)
+
+    coordinate_data = []
     with exiftool.ExifTool() as et:
         for image in file_details['images']:
             exif_info = et.get_metadata(image)
@@ -201,9 +205,20 @@ def getExifInfo(file_details):
                 min_date = image_date
             if image_date > max_date:
                 max_date = image_date
+
+            coordinate_data.append({
+                'lat': exif_info['EXIF:GPSLatitude'],
+                'long': exif_info['EXIF:GPSLongitude']
+            })
     file_details['mission_start_time'] = min_date
     file_details['mission_end_time'] = max_date
 
+    tempDF = pd.DataFrame(coordinate_data)
+    geoDF = geopandas.GeoDataFrame(
+        tempDF, geometry=geopandas.points_from_xy(tempDF.long, tempDF.lat),
+        crs="EPSG:4326"
+    )
+    file_details['flight_bounding_box'] = geoDF.total_bounds
     if file_details['flight_type'] == 'rgb':
         print('rgb')
     elif file_details['flight_type'] == 'multispectral':
