@@ -1,7 +1,7 @@
 // FolderUpload.js
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
-import { Container, Grid, Box, Typography, Button, FormControl, InputLabel, Select, Input, TextField, CircularProgress } from '@mui/material';
+import { Grid, Box, Typography, Button, FormControl, TextField, CircularProgress } from '@mui/material';
 
 const FolderUpload = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -194,7 +194,7 @@ const FolderUpload = () => {
                 variant="contained"
                 color="primary"
                 onClick={handleUpload}
-                disabled={(selectedFiles.length === 0) || (pilotNameRef.current.value === '') || (commentsRef.current.value === '') || (loading)}
+                disabled={(selectedFiles.length === 0) || (pilotNameRef.current.value === '') || (cloudinessRef.current.value === '') || (loading)}
               >
                 {loading ? <CircularProgress size={24} color="inherit" /> : 'Upload Folder'}
               </Button>
