@@ -2,29 +2,42 @@ import os
 import uuid
 import exiftool
 import pymongo
-# import psycopg2
-# from PIL import Image
-# from PIL.ExifTags import TAGS
+import pandas as pd
+import geopandas
+import logging
 from datetime import datetime
 from pyzxing import BarCodeReader
 from config import config
-import pandas as pd
-import geopandas
 
+logger = logging.getLogger('data_upload_api')
+logger.setLevel(logging.INFO)
 
 
 # TODO: Standardize datetime (maybe set all to UTC)
 
-def findRadiancePanels(files, numBands, panelFolder, panelList):
-    # TODO
-    # get first few in one band
-    # get last few in one band
+
+def findRadiancePanels(flight_id, files, num_bands, panel_folder):
+    """
+    As per pre-determined flow, the radiance panels would present either at the
+    start of the flight or at the end. Hence, this function iterates over the
+    first five and last five primary band images to look for radiance panels
+    :param flight_id: unique identifier for the flight
+    :param files: list of image files
+    :param num_bands: number of bands - numBands function
+    :param panel_folder: location to store radiance panel images
+    :return: list of images and list of radiance panel images
+    """
     counter = 0
     possible_panels = []
-    # print(files)
+    logging.info({
+        'flight_id': flight_id,
+        'service': 'radiance panels',
+        'message': 'processing started'
+    })
     for file in files:
         if counter >= 5:
             break
+        # the first band is considered as the primary band
         if '_1.tif' in file:
             possible_panels.append(file)
             counter += 1
@@ -37,62 +50,107 @@ def findRadiancePanels(files, numBands, panelFolder, panelList):
             possible_panels.append(file)
             counter += 1
 
-    panels = []
+    primary_band_panels = []
+    # use qrcode/barcode reader to identify radiance panels
     reader = BarCodeReader()
     for file in possible_panels:
         results = reader.decode(file)
         if 'format' in results[0].keys():
-            panels.append(file)
-    cleanedFileList = files
-    for panel in panels:
-        newUniqueFileName = str(uuid.uuid4())
-        panelFileName = '_'.join(panel.split('_')[:-1])
-        for i in range(1, numBands + 1):
-            fileName = panelFileName + f'_{i}.tif'
-            newFilePath = os.path.join(panelFolder,
-                                       newUniqueFileName + f'_{i}.tif')
-            os.rename(fileName, newFilePath)
-            cleanedFileList.remove(fileName)
-            panelList.append(newFilePath)
+            primary_band_panels.append(file)
+    logging.info({
+        'flight_id': flight_id,
+        'service': 'radiance panels',
+        'message': 'primary band radiance panels found'
+    })
+    # move radiance panel images in all bands to panel folder and remove them
+    # from the list of images to use for orthomosaic generation
+    panel_images = []
+    flight_image_list = files
+    for panel in primary_band_panels:
+        new_file_name = str(uuid.uuid4())
+        original_no_band_filename = '_'.join(panel.split('_')[:-1])
+        for i in range(1, num_bands + 1):
+            source_file_name = original_no_band_filename + f'_{i}.tif'
+            destination_file_path = os.path.join(panel_folder,
+                                                 new_file_name + f'_{i}.tif')
+            os.rename(source_file_name, destination_file_path)
+            flight_image_list.remove(source_file_name)
+            panel_images.append(destination_file_path)
 
-    return cleanedFileList, panelList
+    logging.info({
+        'flight_id': flight_id,
+        'service': 'radiance panels',
+        'message': 'list of panels and images computed'
+    })
+    return flight_image_list, panel_images
 
 
-def calcBands(files):
+def calcBands(flight_id, files):
+    """
+    iterates over the sorted list of files until the band number changes,
+    and then return the number of bands
+    :param flight_id: unique identifier for the flight
+    :param files: sorted list of image files
+    :return: number of bands
+    """
+    logging.info({
+        'flight_id': flight_id,
+        'service': 'num bands',
+        'message': 'processing started'
+    })
     files = [file for file in files if '.tif' in file]
     current_file = '_'.join(os.path.split(files[0])[1].split('_')[:2])
-    numBands = 1
+    num_bands = 1
     for file in files[1:]:
         if '_'.join(os.path.split(file)[1].split('_')[:2]) == current_file:
-            numBands += 1
+            num_bands += 1
         else:
             break
-    return numBands
+    logging.info({
+        'flight_id': flight_id,
+        'service': 'num_bands',
+        'message': 'processing complete'
+    })
+    return num_bands
 
 
-def createFolderStructure(flight_type, files, location='./flights/'):
-    flight_id = str(uuid.uuid4())
-    if not os.path.exists(os.path.join(location, flight_id)):
-        os.makedirs(os.path.join(location, flight_id))
-
-    image_folder = os.path.join(location, flight_id, 'images')
-    other_folder = os.path.join(location, flight_id, 'other_files')
+def createFolderStructure(flight_id, files, check_radiance_panels=False):
+    """
+    creates the folder structure for flight data storage
+    :param flight_id: unique identifier for the flight
+    :param files: array of files in the folder uploaded
+    :param check_radiance_panels: boolean to determine if radiance panels
+    need to found
+    :return: flight_id, flight_images, radiance_panels, misc_files, num_bands,
+    upload_time in one json object
+    """
+    # create a new flight identifier
+    logging.info({
+        'flight_id': flight_id,
+        'service': 'create folder structure',
+        'message': 'processing started'
+    })
+    parent_folder = os.path.join(config['flight_data_folder'], flight_id)
+    # create the required folders for storing the images and misc files
+    if not os.path.exists(parent_folder):
+        os.makedirs(parent_folder)
+    image_folder = os.path.join(parent_folder, 'images')
     if not os.path.exists(image_folder):
         os.makedirs(image_folder)
+    other_folder = os.path.join(parent_folder, 'other_files')
     if not os.path.exists(other_folder):
         os.makedirs(other_folder)
 
-    image_list = []
-    panel_list = []
-    other_list = []
-    # TODO
-    if flight_type == 'multispectral':
-        # add files to tmp storage and then use them ahead
-        temp_folder = os.path.join(location, flight_id, 'temp_storage')
+    image_list, misc_files = [], []
+
+    if check_radiance_panels:
+        # add files to tmp storage and then use them
+        temp_folder = os.path.join(parent_folder, 'temp_storage')
         if not os.path.exists(temp_folder):
             os.makedirs(temp_folder)
         temp_files = []
         for file in files:
+            # ignore the files created by macos - required only for dev
             if '.ds_store' not in file.filename.lower():
                 filepath = os.path.join(temp_folder, os.path.split(
                     file.filename)[1].lower())
@@ -100,104 +158,127 @@ def createFolderStructure(flight_type, files, location='./flights/'):
                 temp_files.append(filepath)
         temp_files.sort()
 
-        numBands = calcBands(temp_files)
-        panel_folder = os.path.join(location, flight_id, 'panels')
+        num_bands = calcBands(flight_id, temp_files)
+        panel_folder = os.path.join(parent_folder, 'panels')
         if not os.path.exists(panel_folder):
             os.makedirs(panel_folder)
 
-        temp_files, panel_list = findRadiancePanels(temp_files, numBands,
-                                                    panel_folder, panel_list)
+        temp_files, panel_list = findRadiancePanels(flight_id, temp_files,
+                                                    num_bands, panel_folder)
+
+        logging.info({
+            'flight_id': flight_id,
+            'service': 'create folder structure',
+            'message': 'separating flight images and misc files'
+        })
+        # maintain a mapping of original file names and unique file names (
+        # since all bands need to have the same prefix)
         mapping_dict = {}
         for file in temp_files:
             name, file_ext = os.path.splitext(file)
-            # TODO: check if these filenames provide information that needs
-            #  to be preseved
-            # TODO: fix .ds_store errors originating from mac file system
+            # TODO: fix .ds_store errors originating from mac file system -
+            #  line 153 should take care of it
             if file_ext.lower() != '.tif':
                 filepath = os.path.join(other_folder,
                                         str(uuid.uuid4()) + file_ext.lower())
                 os.rename(file, filepath)
-                other_list.append(filepath)
+                misc_files.append(filepath)
             else:
-                fileName = '_'.join(file.split('_')[:-1])
-                if fileName not in mapping_dict.keys():
-                    mapping_dict[fileName] = str(uuid.uuid4())
-                bandNumber = file.split('_')[-1]
-                newFilePath = os.path.join(image_folder,
-                                           mapping_dict[fileName] +
-                                           f'_{bandNumber}')
-                os.rename(file, newFilePath)
-                image_list.append(newFilePath)
+                file_name = '_'.join(file.split('_')[:-1])
+                if file_name not in mapping_dict.keys():
+                    mapping_dict[file_name] = str(uuid.uuid4())
+                band_number = file.split('_')[-1]
+                new_file_path = os.path.join(image_folder,
+                                             f'{mapping_dict["file_name"]}_{band_number}')
+                os.rename(file, new_file_path)
+                image_list.append(new_file_path)
 
-        # os.remove(temp_folder)
         os.rmdir(temp_folder)
 
-    elif flight_type == 'rgb':
+    else:
+        panel_list = []
+        logging.info({
+            'flight_id': flight_id,
+            'service': 'create folder structure',
+            'message': 'separating flight images and misc files'
+        })
         for file in files:
             if '.ds_store' not in file.filename.lower():
                 name, file_ext = os.path.splitext(file.filename)
-                # TODO: check if these filenames provide information that needs
-                #  to be preseved
                 if file_ext.lower() != '.jpg':
                     filepath = os.path.join(other_folder,
-                                            str(uuid.uuid4()) + file_ext.lower())
+                                            f'{str(uuid.uuid4())}{file_ext.lower()}')
                     file.save(filepath)
-                    other_list.append(filepath)
+                    misc_files.append(filepath)
                 else:
                     filepath = os.path.join(image_folder,
-                                            str(uuid.uuid4()) + file_ext.lower())
+                                            f'{str(uuid.uuid4())}{file_ext.lower()}')
                     file.save(filepath)
                     image_list.append(filepath)
-
-    file_details = {
+    logging.info({
         'flight_id': flight_id,
-        'images': image_list,
-        'panels': panel_list,
-        'other_files': other_list,
-        'flight_type': flight_type,
+        'service': 'create folder structure',
+        'message': 'processing complete'
+    })
+    return {
+        'flight_id': flight_id,
+        'flight_images': image_list,
+        'radiance_panels': panel_list,
+        'misc_files': misc_files,
+        'num_bands': num_bands,
         'upload_time': datetime.now()
+        # 'flight_type': flight_type,
     }
-    return file_details
 
 
-def calcGSD(exif_info,flight_type):
-    sensor_width = config['sensor_information'][exif_info['EXIF:Model']][
-        'sensor_width']
+def calcGSD(exif_info):
+    """
+    computes ground sampling distance that is used to generate orthomosaic
+    with the best resolution
+    :param exif_info: common exif information - from one image of the flight
+    :return: ground sampling distance
+    """
+    sensor_information = config['sensor_information'][exif_info['EXIF:Model']]
+    sensor_width = sensor_information['sensor_width']
     altitude = exif_info['EXIF:GPSAltitude']
-    if flight_type == 'mutispectral':
-        image_width = exif_info['EXIF:ImageWidth']
-    elif flight_type == 'rgb':
-        image_width = exif_info['EXIF:ExifImageWidth']
+    image_width = exif_info[sensor_information['image_width_exif_tag']]
+    # if flight_type == 'mutispectral':
+    #     image_width = exif_info['EXIF:ImageWidth']
+    # elif flight_type == 'rgb':
+    #     image_width = exif_info['EXIF:ExifImageWidth']
     focal_length = exif_info['EXIF:FocalLength']
     return (altitude * sensor_width * 100) / (image_width * focal_length)
 
 
-
-def getExifInfo(file_details):
+def getExifInfo(flight_id, flight_details):
     # TODO: exifinfo for multispec
     # TODO: get gps info added (and bounding box for the whole flight)
 
-    et = exiftool.ExifTool()
-    # print(et)
-    # print(file_details['images'][0])
+    logging.info({
+        'flight_id': flight_id,
+        'service': 'exif information',
+        'message': 'processing started'
+    })
     with exiftool.ExifTool() as et:
-        first_image_exif_info = et.get_metadata(file_details['images'][0])
+        first_image_exif_info = et.get_metadata(flight_details['images'][0])
     camera_make = first_image_exif_info['EXIF:Make']
     camera_model = first_image_exif_info['EXIF:Model']
-    file_details['camera_make'] = camera_make
-    file_details['camera_model'] = camera_model
-    file_details['gsd'] = calcGSD(first_image_exif_info, file_details[
-        'flight_type'])
-    file_details['file_type'] = first_image_exif_info['File:FileType']
-    # max_date, min_date = datetime.now()
+    flight_details['camera_make'] = camera_make
+    flight_details['camera_model'] = camera_model
+    flight_details['gsd'] = calcGSD(first_image_exif_info)
+    flight_details['file_type'] = first_image_exif_info['File:FileType']
+    logging.info({
+        'flight_id': flight_id,
+        'service': 'exif information',
+        'message': 'extracted common exif information'
+    })
     date_format = '%Y:%m:%d %H:%M:%S'
-    # datetime.strptime(date_string, format_string)
     min_date = max_date = datetime.strptime(
         first_image_exif_info['EXIF:CreateDate'], date_format)
 
     coordinate_data = []
     with exiftool.ExifTool() as et:
-        for image in file_details['images']:
+        for image in flight_details['images']:
             exif_info = et.get_metadata(image)
             image_date = datetime.strptime(exif_info['EXIF:CreateDate'],
                                            date_format)
@@ -210,92 +291,35 @@ def getExifInfo(file_details):
                 'lat': exif_info['EXIF:GPSLatitude'],
                 'long': exif_info['EXIF:GPSLongitude']
             })
-    file_details['mission_start_time'] = min_date
-    file_details['mission_end_time'] = max_date
-
-    tempDF = pd.DataFrame(coordinate_data)
-    geoDF = geopandas.GeoDataFrame(
-        tempDF, geometry=geopandas.points_from_xy(tempDF.long, tempDF.lat),
+    flight_details['mission_start_time'] = min_date
+    flight_details['mission_end_time'] = max_date
+    logging.info({
+        'flight_id': flight_id,
+        'service': 'exif information',
+        'message': 'extracted flight time and gps information'
+    })
+    # TODO: Check if geoDF can be added to the database or atleast geometry
+    #  objects
+    temp_df = pd.DataFrame(coordinate_data)
+    geo_df = geopandas.GeoDataFrame(
+        temp_df, geometry=geopandas.points_from_xy(temp_df.long, temp_df.lat),
         crs="EPSG:4326"
     )
-    file_details['flight_bounding_box'] = geoDF.total_bounds
-    if file_details['flight_type'] == 'rgb':
-        print('rgb')
-    elif file_details['flight_type'] == 'multispectral':
-        print('multispec')
-    return file_details
+    flight_details['flight_bounding_box'] = geo_df.total_bounds
+    logging.info({
+        'flight_id': flight_id,
+        'service': 'exif information',
+        'message': 'computed flight bounds'
+    })
+    return flight_details
+
 
 def insertDb(file_details):
-    client = pymongo.MongoClient('localhost', username='admin',
-                                 # password=getpass('Password: '),
-                                 password='yolo',
+    database_details = config['database_details']
+    client = pymongo.MongoClient(database_details['host'],
+                                 username=database_details['username'],
+                                 password=database_details['password'],
                                  authMechanism='SCRAM-SHA-256')
-    collection = client['drone-pilot']['flight-information']
+    collection = client[database_details['database']][database_details[
+        'collection']]
     collection.insert_one(file_details)
-# def saveFiles(files, metadata, location='./images/'):
-#     experiment_id = str(uuid.uuid4())
-#     # conscious choice of keeping the connection open till all files are
-#     # saved and logged in db
-#     conn, cursor = connectDb()
-#     if not os.path.exists(os.path.join(location, experiment_id)):
-#         os.makedirs(os.path.join(location, experiment_id))
-#     for file in files:
-#         name, file_ext = os.path.splitext(file.filename)
-#         filepath = os.path.join(location,
-#                                 experiment_id,
-#                                 str(uuid.uuid4()) + file_ext)
-#         file.save(filepath)
-#         insertDb(conn, cursor, filepath, experiment_id, metadata)
-#     conn.close()
-
-
-# def connectDb():
-#     connection = psycopg2.connect(database="drone_pilot",
-#                                   host="localhost",
-#                                   user="admin",
-#                                   password="password",
-#                                   port="5432")
-#     return connection, connection.cursor()
-
-
-# def insertDb(conn, cursor, file_location, experiment_id, metadata):
-#     # conn, cursor = connectDb()
-#     try:
-#         cursor.execute(
-#             f"""insert into file_information(experiment_id,file_location, metadata)
-#             values('{experiment_id}','{file_location}', '{metadata}');""")
-#         conn.commit()
-#     except Exception as e:
-#         print(e)
-
-# def insertDb(conn, cursor, file_details, metadata):
-#     print(file_details)
-#     print("*********")
-#     print(metadata)
-#     # for file_location in file_details['images']:
-#     #     try:
-#     #         cursor.execute(
-#     #             f"""insert into file_information(experiment_id,file_location, metadata)
-#     #             values('{file_details["flight_id"]}','{file_location}',
-#     #             '{metadata}');""")
-#     #         conn.commit()
-#     #     except Exception as e:
-#     #         print(e)
-#     # for file_location in file_details['panels']:
-#     #     try:
-#     #         cursor.execute(
-#     #             f"""insert into file_information(experiment_id,file_location, metadata)
-#     #             values('{file_details["flight_id"]}','{file_location}',
-#     #             '{metadata}');""")
-#     #         conn.commit()
-#     #     except Exception as e:
-#     #         print(e)
-#     # for file_location in file_details['other_files']:
-#     #     try:
-#     #         cursor.execute(
-#     #             f"""insert into file_information(experiment_id,file_location, metadata)
-#     #             values('{file_details["flight_id"]}','{file_location}',
-#     #             '{metadata}');""")
-#     #         conn.commit()
-#     #     except Exception as e:
-#     #         print(e)

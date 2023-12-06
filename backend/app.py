@@ -1,4 +1,6 @@
 import json
+import uuid
+
 import flask
 import logging
 import sys
@@ -9,7 +11,7 @@ import utils
 
 app = Flask(__name__)
 CORS(app)
-logger = logging.getLogger()
+logger = logging.getLogger('data_upload_api')
 logger.setLevel(logging.INFO)
 
 
@@ -26,53 +28,74 @@ def file_sorter(x):
     return x.filename
 
 
+# ping is not required for this API since it lives locally on individual
+# workstations
+
+
 @app.route('/imgproc', methods=['POST'])
 def acceptUpload():
-    # logging.info(flask.request)
     try:
-        # print(flask.request.form)
         if flask.request.method == 'POST':
-            formData = flask.request.form
-            metadata = json.loads(formData['metadata'])
+            metadata = json.loads(flask.request.form['metadata'])
             files = flask.request.files.getlist("files")
             files = sorted(files, key=file_sorter)
-            # files.sort()
-            # determine flight type
-            # TODO: check if there's a way to remove/reduce the loop complexity
+            flight_id = str(uuid.uuid4())
+            logging.info({
+                'flight_id': flight_id,
+                'service': 'data upload',
+                'message': 'images received'
+            })
+            # check the type of the images - used later (multispectral images
+            # have some pictures of the calibration panels)
+            # TODO: Change this to use the make and model of the camera to
+            #  make decisions
             if any('.tif' in file.filename.lower() for file in files):
-                flight_type = 'multispectral'
+                check_radiance_panels = True
             elif any('.jpg' in file.filename.lower() for file in files):
-                flight_type = 'rgb'
+                check_radiance_panels = False
             else:
-                status_code, response = 400, {'status': 'failed', 'reason':
-                    'images not present'}
+                status_code, response = 400, {'status': 'failed',
+                                              'reason': 'images not present'}
+                logging.error({
+                    'flight_id': flight_id,
+                    'service': 'data upload',
+                    'status_code': 400,
+                    'message': 'supported images not present'
+                })
                 return flask.Response(response=json.dumps(response),
                                       status=status_code)
 
-            file_details = utils.createFolderStructure(flight_type, files)
-            file_details = utils.getExifInfo(file_details)
-            file_details['pilot_name'] = metadata['pilotName']
-            file_details['cloudiness'] = metadata['cloudiness']
-            file_details['comments'] = metadata['comments']
-            # metadata['camera_make'] = file_details['camera_make']
-            # metadata['camera_model'] = file_details['camera_model']
-            # metadata['mission_start_time'] = file_details['mission_start_time']
-            # metadata['mission_end_time'] = file_details['mission_end_time']
-            # metadata['color_representation'] = file_details['flight_type']
-            # metadata = json.dumps(metadata, default=str)
-            # print(file_details)
-            # print("********")
-            # print("********")
-            # print(metadata)
-            # conn, cursor = utils.connectDb()
-            # utils.insertDb(conn, cursor, file_details, metadata)
-            utils.insertDb(file_details)
+            flight_details = utils.createFolderStructure(flight_id, files,
+                                                         check_radiance_panels)
+            flight_details = utils.getExifInfo(flight_id, flight_details)
 
-        status_code, response = 200, {'status': 'success'}
-        return flask.Response(response=json.dumps(response), status=status_code)
+            # adding metadata received from the user to the database
+            flight_details['pilot_name'] = metadata['pilotName']
+            flight_details['cloudiness'] = metadata['cloudiness']
+            flight_details['comments'] = metadata['comments']
+            logging.info({
+                'flight_id': flight_id,
+                'service': 'database upload',
+                'message': 'processing started'
+            })
+            utils.insertDb(flight_details)
+
+            status_code, response = 200, {'status': 'success'}
+            logging.info({
+                'flight_id': flight_id,
+                'service': 'data upload',
+                'status_code': 200,
+                'message': 'processing complete'
+            })
+            return flask.Response(response=json.dumps(response),
+                                  status=status_code)
     except Exception as e:
-        print(e)
-        status_code, response = 400, {'status': 'error, bad req'}
+        logging.error({
+            'service': 'data upload',
+            'status_code': 500,
+            'message': e
+        })
+        status_code, response = 500, {'status': 'internal server error'}
         return flask.Response(response=json.dumps(response), status=status_code,
                               mimetype='application/json')
 
