@@ -1,0 +1,9 @@
+server {
+    listen 80;
+    root /var/www/drone-pilot-upload/frontend/build;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
