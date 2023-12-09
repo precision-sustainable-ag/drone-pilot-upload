@@ -1,16 +1,35 @@
 import os
+import sys
+import json
 import uuid
 import exiftool
 import pymongo
 import pandas as pd
+import shapely
+import shapely.geometry as geometry
 import geopandas
 import logging
+from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
 from pyzxing import BarCodeReader
 from config import config
 
-logger = logging.getLogger('data_upload_api')
-logger.setLevel(logging.INFO)
+
+def setup_logging():
+    log_file = 'api_log'
+    file_handler = TimedRotatingFileHandler(log_file, when='D', interval=30)
+
+    # Set the log level and formatter
+    file_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+
+    # Add the file handler to the root logger
+    logging.getLogger().setLevel(logging.INFO)
+    logging.getLogger().addHandler(file_handler)
+
+
+setup_logging()
 
 
 # TODO: Standardize datetime (maybe set all to UTC)
@@ -158,10 +177,11 @@ def createFolderStructure(flight_id, files, check_radiance_panels=False):
                 temp_files.append(filepath)
         temp_files.sort()
 
-        num_bands = calcBands(flight_id, temp_files)
         panel_folder = os.path.join(parent_folder, 'panels')
         if not os.path.exists(panel_folder):
             os.makedirs(panel_folder)
+
+        num_bands = calcBands(flight_id, temp_files)
 
         temp_files, panel_list = findRadiancePanels(flight_id, temp_files,
                                                     num_bands, panel_folder)
@@ -189,7 +209,8 @@ def createFolderStructure(flight_id, files, check_radiance_panels=False):
                     mapping_dict[file_name] = str(uuid.uuid4())
                 band_number = file.split('_')[-1]
                 new_file_path = os.path.join(image_folder,
-                                             f'{mapping_dict["file_name"]}_{band_number}')
+                                             f'{mapping_dict[file_name]}_'
+                                             f'{band_number}')
                 os.rename(file, new_file_path)
                 image_list.append(new_file_path)
 
@@ -197,6 +218,9 @@ def createFolderStructure(flight_id, files, check_radiance_panels=False):
 
     else:
         panel_list = []
+        # working on the assumption that if radiance panels are checked,
+        # images are multispectral else RGB
+        num_bands = 0
         logging.info({
             'flight_id': flight_id,
             'service': 'create folder structure',
@@ -250,17 +274,18 @@ def calcGSD(exif_info):
     return (altitude * sensor_width * 100) / (image_width * focal_length)
 
 
-def getExifInfo(flight_id, flight_details):
+def getExifInfo(flight_details):
     # TODO: exifinfo for multispec
     # TODO: get gps info added (and bounding box for the whole flight)
 
     logging.info({
-        'flight_id': flight_id,
+        'flight_id': flight_details['flight_id'],
         'service': 'exif information',
         'message': 'processing started'
     })
     with exiftool.ExifTool() as et:
-        first_image_exif_info = et.get_metadata(flight_details['images'][0])
+        first_image_exif_info = et.get_metadata(
+            flight_details['flight_images'][0])
     camera_make = first_image_exif_info['EXIF:Make']
     camera_model = first_image_exif_info['EXIF:Model']
     flight_details['camera_make'] = camera_make
@@ -268,7 +293,7 @@ def getExifInfo(flight_id, flight_details):
     flight_details['gsd'] = calcGSD(first_image_exif_info)
     flight_details['file_type'] = first_image_exif_info['File:FileType']
     logging.info({
-        'flight_id': flight_id,
+        'flight_id': flight_details['flight_id'],
         'service': 'exif information',
         'message': 'extracted common exif information'
     })
@@ -278,7 +303,7 @@ def getExifInfo(flight_id, flight_details):
 
     coordinate_data = []
     with exiftool.ExifTool() as et:
-        for image in flight_details['images']:
+        for image in flight_details['flight_images']:
             exif_info = et.get_metadata(image)
             image_date = datetime.strptime(exif_info['EXIF:CreateDate'],
                                            date_format)
@@ -288,26 +313,36 @@ def getExifInfo(flight_id, flight_details):
                 max_date = image_date
 
             coordinate_data.append({
-                'lat': exif_info['EXIF:GPSLatitude'],
-                'long': exif_info['EXIF:GPSLongitude']
+                'Latitude': exif_info['EXIF:GPSLatitude'],
+                'Longitude': exif_info['EXIF:GPSLongitude']
             })
     flight_details['mission_start_time'] = min_date
     flight_details['mission_end_time'] = max_date
     logging.info({
-        'flight_id': flight_id,
+        'flight_id': flight_details['flight_id'],
         'service': 'exif information',
         'message': 'extracted flight time and gps information'
     })
     # TODO: Check if geoDF can be added to the database or atleast geometry
     #  objects
+    # TODO: Add -ve latitude and longitude (for west/south)
     temp_df = pd.DataFrame(coordinate_data)
     geo_df = geopandas.GeoDataFrame(
-        temp_df, geometry=geopandas.points_from_xy(temp_df.long, temp_df.lat),
+        temp_df, geometry=geopandas.points_from_xy(temp_df.Longitude,
+                                                   temp_df.Latitude),
         crs="EPSG:4326"
     )
-    flight_details['flight_bounding_box'] = geo_df.total_bounds
+    # flight_details['flight_polygon'] = json.loads(shapely.to_geojson(
+    #     geometry.Polygon(geo_df['geometry'].tolist())))
+    flight_details['flight_polygon'] = {"type": "GeometryCollection",
+                                        "geometries": [json.loads(x) for x in
+                                                       shapely.to_geojson(
+                                                           geo_df[
+                                                               'geometry'].tolist())]}
+    total_bounds = geo_df.total_bounds
+    flight_details['flight_bounding_box'] = total_bounds.tolist()
     logging.info({
-        'flight_id': flight_id,
+        'flight_id': flight_details['flight_id'],
         'service': 'exif information',
         'message': 'computed flight bounds'
     })

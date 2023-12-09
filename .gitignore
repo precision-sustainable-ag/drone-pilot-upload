@@ -29,3 +29,5 @@ yarn-error.log*
 
 backend/images/
 backend/flights/
+backend/.ipynb_checkpoints/
+*/*.ipynb

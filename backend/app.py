@@ -3,7 +3,6 @@ import uuid
 
 import flask
 import logging
-import sys
 from flask import Flask
 from flask_cors import CORS
 
@@ -11,8 +10,7 @@ import utils
 
 app = Flask(__name__)
 CORS(app)
-logger = logging.getLogger('data_upload_api')
-logger.setLevel(logging.INFO)
+utils.setup_logging()
 
 
 @app.route('/ping', methods=['GET'])
@@ -67,12 +65,16 @@ def acceptUpload():
 
             flight_details = utils.createFolderStructure(flight_id, files,
                                                          check_radiance_panels)
-            flight_details = utils.getExifInfo(flight_id, flight_details)
+            flight_details = utils.getExifInfo(flight_details)
 
             # adding metadata received from the user to the database
             flight_details['pilot_name'] = metadata['pilotName']
             flight_details['cloudiness'] = metadata['cloudiness']
             flight_details['comments'] = metadata['comments']
+            flight_details[
+                'display_name'] = f"{flight_details['mission_start_time']}" \
+                                  f"-{flight_details['cloudiness']}-" \
+                                  f"{flight_details['pilot_name']}"
             logging.info({
                 'flight_id': flight_id,
                 'service': 'database upload',
