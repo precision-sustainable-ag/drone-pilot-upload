@@ -31,3 +31,4 @@ backend/images/
 backend/flights/
 backend/.ipynb_checkpoints/
 */*.ipynb
+backend/logs/*

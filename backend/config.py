@@ -19,5 +19,6 @@ config = {
         'password': 'yolo',
         'database': 'drone-pilot',
         'collection': 'flight-information'
-    }
+    },
+    'log_file': './logs/log_'
 }

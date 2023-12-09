@@ -1,12 +1,12 @@
 import os
-import sys
+# import sys
 import json
 import uuid
 import exiftool
 import pymongo
 import pandas as pd
 import shapely
-import shapely.geometry as geometry
+# import shapely.geometry as geometry
 import geopandas
 import logging
 from logging.handlers import TimedRotatingFileHandler
@@ -16,7 +16,7 @@ from config import config
 
 
 def setup_logging():
-    log_file = 'api_log'
+    log_file = config['log_file']
     file_handler = TimedRotatingFileHandler(log_file, when='D', interval=30)
 
     # Set the log level and formatter
