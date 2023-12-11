@@ -17,6 +17,9 @@ from config import config
 
 def setup_logging():
     log_file = config['log_file']
+    log_folder = os.path.split(log_file)[0]
+    if not os.path.exists(log_folder):
+        os.makedirs(log_folder)
     file_handler = TimedRotatingFileHandler(log_file, when='D', interval=30)
 
     # Set the log level and formatter
