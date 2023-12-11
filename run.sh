@@ -1,4 +1,4 @@
-sudo apt -y install nodejs npm git nginx python3-venv
+sudo apt -y install nodejs npm git nginx python3-venv exiftool
 # python3 -m pip install --user virtualenv
 
 cd /var/www/

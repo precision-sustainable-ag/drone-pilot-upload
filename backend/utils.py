@@ -32,7 +32,7 @@ def setup_logging():
     logging.getLogger().addHandler(file_handler)
 
 
-setup_logging()
+# setup_logging()
 
 
 # TODO: Standardize datetime (maybe set all to UTC)
