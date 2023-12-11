@@ -31,3 +31,5 @@ sudo systemctl start drone_upload_api
 # cd /var/www/drone-pilot-upload/backend
 # gunicorn -b 127.0.0.1:5000 app:app
 
+# update config with correct mongodb credentials
+# change axios command in App.js with the correct host IP
