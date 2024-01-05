@@ -265,16 +265,18 @@ def calcGSD(exif_info):
     :param exif_info: common exif information - from one image of the flight
     :return: ground sampling distance
     """
-    sensor_information = config['sensor_information'][exif_info['EXIF:Model']]
-    sensor_width = sensor_information['sensor_width']
-    altitude = exif_info['EXIF:GPSAltitude']
-    image_width = exif_info[sensor_information['image_width_exif_tag']]
-    # if flight_type == 'mutispectral':
-    #     image_width = exif_info['EXIF:ImageWidth']
-    # elif flight_type == 'rgb':
-    #     image_width = exif_info['EXIF:ExifImageWidth']
-    focal_length = exif_info['EXIF:FocalLength']
-    return (altitude * sensor_width * 100) / (image_width * focal_length)
+    if exif_info['EXIF:Model'] in config['sensor_information'].keys():
+        sensor_information = config['sensor_information'][exif_info['EXIF:Model']]
+        sensor_width = sensor_information['sensor_width']
+        altitude = exif_info['EXIF:GPSAltitude']
+        image_width = exif_info[sensor_information['image_width_exif_tag']]
+        # if flight_type == 'mutispectral':
+        #     image_width = exif_info['EXIF:ImageWidth']
+        # elif flight_type == 'rgb':
+        #     image_width = exif_info['EXIF:ExifImageWidth']
+        focal_length = exif_info['EXIF:FocalLength']
+        return (altitude * sensor_width * 100) / (image_width * focal_length)
+    return 0.001
 
 
 def getExifInfo(flight_details):
