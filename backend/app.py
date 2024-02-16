@@ -11,6 +11,7 @@ import utils
 app = Flask(__name__)
 CORS(app)
 utils.setup_logging()
+app.config['MAX_CONTENT_LENGTH'] = 150 * 1024 * 1024 * 1024
 
 
 @app.route('/ping', methods=['GET'])
