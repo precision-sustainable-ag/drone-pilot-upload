@@ -6,7 +6,7 @@ import exiftool
 import pymongo
 import pandas as pd
 import shapely
-# import shapely.geometry as geometry
+from shapely.geometry import box, mapping
 import geopandas
 import logging
 from logging.handlers import TimedRotatingFileHandler
@@ -34,7 +34,14 @@ def setup_logging():
 
 # setup_logging()
 
-
+def changeCRS(source_crs, target_crs, source_polygon):
+    transformer = pyproj.Transformer.from_crs(source_crs, target_crs,
+                                              always_xy=True)
+    target_polygon = []
+    for coordinate in source_polygon:
+        x, y = transformer.transform(coordinate[0], coordinate[1])
+        target_polygon.append([x, y])
+    return target_polygon
 # TODO: Standardize datetime (maybe set all to UTC)
 
 
@@ -266,7 +273,8 @@ def calcGSD(exif_info):
     :return: ground sampling distance
     """
     if exif_info['EXIF:Model'] in config['sensor_information'].keys():
-        sensor_information = config['sensor_information'][exif_info['EXIF:Model']]
+        sensor_information = config['sensor_information'][
+            exif_info['EXIF:Model']]
         sensor_width = sensor_information['sensor_width']
         altitude = exif_info['EXIF:GPSAltitude']
         image_width = exif_info[sensor_information['image_width_exif_tag']]
@@ -316,10 +324,14 @@ def getExifInfo(flight_details):
                 min_date = image_date
             if image_date > max_date:
                 max_date = image_date
-
+            # TODO: coordinates also have s/w (which makes it negative)
             coordinate_data.append({
-                'Latitude': exif_info['EXIF:GPSLatitude'],
-                'Longitude': exif_info['EXIF:GPSLongitude']
+                'Latitude': exif_info['EXIF:GPSLatitude'] if exif_info[
+                                                                 'EXIF:GPSLatitudeRef'].lower() == 'n' else -(
+                exif_info['EXIF:GPSLatitude']),
+                'Longitude': exif_info['EXIF:GPSLongitude'] if exif_info[
+                                                                   'EXIF:GPSLongitudeRef'].lower() == 'e' else -(
+                exif_info['EXIF:GPSLongitude']),
             })
     flight_details['mission_start_time'] = min_date
     flight_details['mission_end_time'] = max_date
@@ -345,7 +357,13 @@ def getExifInfo(flight_details):
                                                            geo_df[
                                                                'geometry'].tolist())]}
     total_bounds = geo_df.total_bounds
-    flight_details['flight_bounding_box'] = total_bounds.tolist()
+    xmin, ymin, xmax, ymax = total_bounds.tolist()
+    geom = box(xmin, ymin, xmax, ymax)
+    original_polygon = [list(x) for x in mapping(
+        geom)['coordinates'][0]][:4]
+    new_polygon = changeCRS('EPSG:4326', 'EPSG:3857', original_polygon)
+    flight_details['flight_bounding_box'] = original_polygon
+    flight_details['flight_bounding_box_3857'] = new_polygon
     logging.info({
         'flight_id': flight_details['flight_id'],
         'service': 'exif information',

@@ -37,7 +37,7 @@ def main():
                                    'odm_orthophoto.tif')
     update = {"$set": {
         "orthophoto_path": orthophoto_path,
-        "source_crs": source_crs
+        "orthophoto_source_crs": source_crs
     }}
 
     client, db_collection = utils.connectDb()
