@@ -3,7 +3,6 @@ import sys
 import pymongo
 import pyproj
 
-
 def connectDb():
     database_details = {
         'host': 'localhost',
@@ -35,9 +34,15 @@ def main():
     query = {'flight_id': flight_id}
     orthophoto_path = os.path.join(flight_dir, 'odm_orthophoto',
                                    'odm_orthophoto.tif')
+    cog_path = os.path.join(flight_dir, 'odm_orthophoto',
+                                   'cog.tif')
+    veg_index_folder - os.path.join(flight_dir, 'veg_indices')
+
     update = {"$set": {
         "orthophoto_path": orthophoto_path,
-        "orthophoto_source_crs": source_crs
+        "cog_path": cog_path,
+        "orthophoto_source_crs": source_crs,
+        "veg_index_folder": veg_index_folder,
     }}
 
     client, db_collection = utils.connectDb()
