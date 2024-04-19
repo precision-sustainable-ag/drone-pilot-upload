@@ -11,7 +11,10 @@ flight_id="$2"
 
 # RUN ODM
 # TODO: @Jacob - change this to singularity implementation for HPC
-docker run -ti --rm -v $parentdir:/dataset/ opendronemap/odm --project-path /dataset $2 --dsm --dtm --cog  --mesh-octree-depth 12 --orthophoto-compression LZMA --orthophoto-resolution 0.001 --feature-quality ultra --pc-quality ultra --min-num-features 50000 &> $1/odm.log
+docker run -ti --rm -v $parentdir:/dataset/ opendronemap/odm --project-path
+/dataset $2 --dsm --dtm --cog  --mesh-octree-depth 12
+--orthophoto-compression LZMA --orthophoto-resolution 0.001 --feature-quality
+ ultra --pc-quality ultra --min-num-features 50000 &> $1/odm.log
 
 # CREATE COG
 # TODO: @Jinam - make sure rio is installed on whichever machine runs this code

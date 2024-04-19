@@ -1,9 +1,9 @@
 import os
-# import sys
 import json
 import uuid
 import exiftool
 import pymongo
+import pyproj
 import pandas as pd
 import shapely
 from shapely.geometry import box, mapping
@@ -12,6 +12,8 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
 from pyzxing import BarCodeReader
+
+import app
 from config import config
 
 
@@ -42,6 +44,8 @@ def changeCRS(source_crs, target_crs, source_polygon):
         x, y = transformer.transform(coordinate[0], coordinate[1])
         target_polygon.append([x, y])
     return target_polygon
+
+
 # TODO: Standardize datetime (maybe set all to UTC)
 
 
@@ -86,11 +90,13 @@ def findRadiancePanels(flight_id, files, num_bands, panel_folder):
         results = reader.decode(file)
         if 'format' in results[0].keys():
             primary_band_panels.append(file)
+
     logging.info({
         'flight_id': flight_id,
         'service': 'radiance panels',
         'message': 'primary band radiance panels found'
     })
+
     # move radiance panel images in all bands to panel folder and remove them
     # from the list of images to use for orthomosaic generation
     panel_images = []
@@ -160,6 +166,7 @@ def createFolderStructure(flight_id, files, check_radiance_panels=False):
         'message': 'processing started'
     })
     parent_folder = os.path.join(config['flight_data_folder'], flight_id)
+
     # create the required folders for storing the images and misc files
     if not os.path.exists(parent_folder):
         os.makedirs(parent_folder)
@@ -183,7 +190,9 @@ def createFolderStructure(flight_id, files, check_radiance_panels=False):
             if '.ds_store' not in file.filename.lower():
                 filepath = os.path.join(temp_folder, os.path.split(
                     file.filename)[1].lower())
-                file.save(filepath)
+                # ensuring file descriptor scope
+                with open(filepath, 'wb') as f:
+                    f.write(file.read())
                 temp_files.append(filepath)
         temp_files.sort()
 
@@ -206,8 +215,6 @@ def createFolderStructure(flight_id, files, check_radiance_panels=False):
         mapping_dict = {}
         for file in temp_files:
             name, file_ext = os.path.splitext(file)
-            # TODO: fix .ds_store errors originating from mac file system -
-            #  line 153 should take care of it
             if file_ext.lower() != '.tif':
                 filepath = os.path.join(other_folder,
                                         str(uuid.uuid4()) + file_ext.lower())
@@ -249,11 +256,14 @@ def createFolderStructure(flight_id, files, check_radiance_panels=False):
                                             f'{str(uuid.uuid4())}{file_ext.lower()}')
                     file.save(filepath)
                     image_list.append(filepath)
+    # gc.collect()
+
     logging.info({
         'flight_id': flight_id,
         'service': 'create folder structure',
         'message': 'processing complete'
     })
+
     return {
         'flight_id': flight_id,
         'flight_images': image_list,
@@ -272,6 +282,7 @@ def calcGSD(exif_info):
     :param exif_info: common exif information - from one image of the flight
     :return: ground sampling distance
     """
+
     if exif_info['EXIF:Model'] in config['sensor_information'].keys():
         sensor_information = config['sensor_information'][
             exif_info['EXIF:Model']]
@@ -296,61 +307,69 @@ def getExifInfo(flight_details):
         'service': 'exif information',
         'message': 'processing started'
     })
+
     with exiftool.ExifTool() as et:
         first_image_exif_info = et.get_metadata(
             flight_details['flight_images'][0])
+
     camera_make = first_image_exif_info['EXIF:Make']
     camera_model = first_image_exif_info['EXIF:Model']
     flight_details['camera_make'] = camera_make
     flight_details['camera_model'] = camera_model
     flight_details['gsd'] = calcGSD(first_image_exif_info)
     flight_details['file_type'] = first_image_exif_info['File:FileType']
+
     logging.info({
         'flight_id': flight_details['flight_id'],
         'service': 'exif information',
         'message': 'extracted common exif information'
     })
+
     date_format = '%Y:%m:%d %H:%M:%S'
-    min_date = max_date = datetime.strptime(
+    min_date = max_date = image_date = datetime.strptime(
         first_image_exif_info['EXIF:CreateDate'], date_format)
 
     coordinate_data = []
     with exiftool.ExifTool() as et:
-        for image in flight_details['flight_images']:
-            exif_info = et.get_metadata(image)
+        all_img_exif_info = et.get_metadata_batch(flight_details[
+                                                      'flight_images'])
+
+    for exif_info in all_img_exif_info:
+        if 'EXIF:CreateDate' in exif_info.keys():
             image_date = datetime.strptime(exif_info['EXIF:CreateDate'],
                                            date_format)
-            if image_date < min_date:
-                min_date = image_date
-            if image_date > max_date:
-                max_date = image_date
-            # TODO: coordinates also have s/w (which makes it negative)
+        if image_date < min_date:
+            min_date = image_date
+        if image_date > max_date:
+            max_date = image_date
+        # TODO: coordinates also have s/w (which makes it negative)
+        if 'EXIF:GPSLatitude' in exif_info.keys() and 'EXIF:GPSLongitude' \
+                in exif_info.keys():
             coordinate_data.append({
                 'Latitude': exif_info['EXIF:GPSLatitude'] if exif_info[
                                                                  'EXIF:GPSLatitudeRef'].lower() == 'n' else -(
-                exif_info['EXIF:GPSLatitude']),
+                    exif_info['EXIF:GPSLatitude']),
                 'Longitude': exif_info['EXIF:GPSLongitude'] if exif_info[
                                                                    'EXIF:GPSLongitudeRef'].lower() == 'e' else -(
-                exif_info['EXIF:GPSLongitude']),
+                    exif_info['EXIF:GPSLongitude']),
             })
     flight_details['mission_start_time'] = min_date
     flight_details['mission_end_time'] = max_date
+
     logging.info({
         'flight_id': flight_details['flight_id'],
         'service': 'exif information',
         'message': 'extracted flight time and gps information'
     })
+
     # TODO: Check if geoDF can be added to the database or atleast geometry
     #  objects
-    # TODO: Add -ve latitude and longitude (for west/south)
     temp_df = pd.DataFrame(coordinate_data)
     geo_df = geopandas.GeoDataFrame(
         temp_df, geometry=geopandas.points_from_xy(temp_df.Longitude,
                                                    temp_df.Latitude),
         crs="EPSG:4326"
     )
-    # flight_details['flight_polygon'] = json.loads(shapely.to_geojson(
-    #     geometry.Polygon(geo_df['geometry'].tolist())))
     flight_details['flight_polygon'] = {"type": "GeometryCollection",
                                         "geometries": [json.loads(x) for x in
                                                        shapely.to_geojson(
@@ -364,6 +383,7 @@ def getExifInfo(flight_details):
     new_polygon = changeCRS('EPSG:4326', 'EPSG:3857', original_polygon)
     flight_details['flight_bounding_box'] = original_polygon
     flight_details['flight_bounding_box_3857'] = new_polygon
+
     logging.info({
         'flight_id': flight_details['flight_id'],
         'service': 'exif information',
