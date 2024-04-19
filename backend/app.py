@@ -1,21 +1,31 @@
 import json
 import uuid
-
 import flask
 import logging
-from flask import Flask
+from flask import Flask, Request
 from flask_cors import CORS
 
 import utils
+from config import config
+
+
+class CustomRequest(Request):
+    def __init__(self, *args, **kwargs):
+        super(CustomRequest, self).__init__(*args, **kwargs)
+        self.max_form_parts = config['max_file_count']
+
 
 app = Flask(__name__)
+app.request_class = CustomRequest
 CORS(app)
-utils.setup_logging()
-app.config['MAX_CONTENT_LENGTH'] = 150 * 1024 * 1024 * 1024
 
 
+# app.config['MAX_CONTENT_LENGTH'] = 150 * 1024 * 1024 * 1024
+
+# ping is not required for this API since it lives locally on individual
+# workstations
 @app.route('/ping', methods=['GET'])
-def ping():  # put application's code here
+def ping():
     response_body = {
         'status': 'healthy'
     }
@@ -27,23 +37,20 @@ def file_sorter(x):
     return x.filename
 
 
-# ping is not required for this API since it lives locally on individual
-# workstations
-
-
 @app.route('/imgproc', methods=['POST'])
 def acceptUpload():
     try:
         if flask.request.method == 'POST':
             metadata = json.loads(flask.request.form['metadata'])
-            files = flask.request.files.getlist("files")
-            files = sorted(files, key=file_sorter)
+            files = sorted(flask.request.files.getlist("files"),
+                           key=file_sorter)
             flight_id = str(uuid.uuid4())
             logging.info({
                 'flight_id': flight_id,
                 'service': 'data upload',
                 'message': 'images received'
             })
+
             # check the type of the images - used later (multispectral images
             # have some pictures of the calibration panels)
             # TODO: Change this to use the make and model of the camera to
@@ -66,6 +73,11 @@ def acceptUpload():
 
             flight_details = utils.createFolderStructure(flight_id, files,
                                                          check_radiance_panels)
+
+            # explicit closing of files to empty filedescriptor (file pointers)
+            for file in files:
+                file.close()
+
             flight_details = utils.getExifInfo(flight_details)
 
             # adding metadata received from the user to the database
@@ -104,4 +116,5 @@ def acceptUpload():
 
 
 if __name__ == '__main__':
+    utils.setup_logging()
     app.run()

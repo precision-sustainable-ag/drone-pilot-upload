@@ -20,5 +20,6 @@ config = {
         'database': 'drone-pilot',
         'collection': 'flight-information'
     },
-    'log_file': './logs/log_'
+    'log_file': './logs/log_',
+    'max_file_count': 13000
 }
