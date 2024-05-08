@@ -10,6 +10,9 @@ cd /var/www/drone-pilot-upload/frontend
 sudo npm install
 sudo npm run build
 
+# allow for unlimited files to be open concurrently 
+sudo ulimit -n unlimited
+
 sudo rm -rf /etc/nginx/sites-enabled/default
 sudo rm -rf /etc/nginx/sites-enabled/drone_pilot_upload.nginx
 

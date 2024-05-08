@@ -4,7 +4,6 @@ import flask
 import logging
 from flask import Flask, Request
 from flask_cors import CORS
-
 import utils
 from config import config
 
@@ -44,6 +43,7 @@ def acceptUpload():
             metadata = json.loads(flask.request.form['metadata'])
             files = sorted(flask.request.files.getlist("files"),
                            key=file_sorter)
+            file_count = len(files)
             flight_id = str(uuid.uuid4())
             logging.info({
                 'flight_id': flight_id,
@@ -93,6 +93,16 @@ def acceptUpload():
                 'service': 'database upload',
                 'message': 'processing started'
             })
+
+            # these can be recomputed from flight_id, hence freeing up
+            # database storage space
+            del flight_details['flight_images']
+            del flight_details['radiance_panels']
+            del flight_details['misc_files']
+
+            # adding number of files for checking data upload status
+            flight_details['num_files'] = file_count
+
             utils.insertDb(flight_details)
 
             status_code, response = 200, {'status': 'success'}
