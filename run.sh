@@ -10,7 +10,7 @@ cd /var/www/drone-pilot-upload/frontend
 sudo npm install
 sudo npm run build
 
-# allow for unlimited files to be open concurrently 
+# allow for unlimited files to be open concurrently
 sudo ulimit -n unlimited
 
 sudo rm -rf /etc/nginx/sites-enabled/default
@@ -21,12 +21,12 @@ sudo ln -s /etc/nginx/sites-available/drone_pilot_upload.nginx /etc/nginx/sites-
 
 sudo systemctl reload nginx
 
-sudo python3 -m venv /var/www/drone-pilot-upload/backend/venv
+sudo python3.9 -m venv /var/www/drone-pilot-upload/backend/venv
 source /var/www/drone-pilot-upload/backend/venv/bin/activate
 
-sudo chown -R azureuser /var/www/drone-pilot-upload/
+sudo chown -R root /var/www/drone-pilot-upload/
 
-/var/www/drone-pilot-upload/backend/venv/bin/python3 -m pip install -r /var/www/drone-pilot-upload/backend/requirements.txt
+sudo /var/www/drone-pilot-upload/backend/venv/bin/python3 -m pip install -r /var/www/drone-pilot-upload/backend/requirements.txt
 
 sudo cp /var/www/drone-pilot-upload/backend/gunicorn.service /etc/systemd/system/drone_upload_api.service
 sudo systemctl daemon-reload
