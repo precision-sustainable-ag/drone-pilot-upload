@@ -1,4 +1,12 @@
-sudo apt -y install nodejs npm git nginx python3-venv exiftool
+# install nodejs 20
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_21.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+sudo apt update
+sudo apt install nodejs -y
+
+#sudo apt -y install nodejs npm git nginx python3-venv exiftool
+sudo apt -y install git nginx python3-venv exiftool
 # python3 -m pip install --user virtualenv
 
 cd /var/www/
