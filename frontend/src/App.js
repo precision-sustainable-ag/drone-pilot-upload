@@ -66,7 +66,7 @@ const FolderUpload = () => {
     try {
       // Send the FormData to the server for processing.
       // will always be localhost since "drone pilot upload" is meant to run locally and process files
-      await axios.post('http://127.0.0.1:5000/imgproc', formDataToSend, {
+      await axios.post(process.env.REACT_APP_API_URL, formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
