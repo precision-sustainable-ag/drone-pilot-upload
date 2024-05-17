@@ -18,6 +18,7 @@ config = {
         'username': 'admin',
         'password': 'yolo',
         'database': 'drone-pilot',
+        'auth_source': 'admin',
         'collection': 'flight-information'
     },
     'log_file': './logs/log_',

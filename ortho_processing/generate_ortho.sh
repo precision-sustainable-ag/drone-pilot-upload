@@ -28,7 +28,7 @@ docker run -it --rm -v $flightdir:/dataset/ drone_ortho_intel:latest
 $cog_path $flightdir
 
 # DB ENTRY AND CRS EXTRACTION
-python3
+#python3
 
 # MONGO_HOST="localhost"
 # MONGO_PORT="27017"
