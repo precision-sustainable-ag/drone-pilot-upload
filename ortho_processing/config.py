@@ -7,5 +7,5 @@ config = {
         'auth_source': 'admin',
         'collection': 'flight-information'
     },
-    'flights_dir': '/Users/jbshah/_p/'
+    'flights_dir': '/Users/jbshah/_p/test/backend_storage/flights/'
 }

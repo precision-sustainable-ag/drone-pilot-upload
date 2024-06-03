@@ -1,3 +1,11 @@
+'''
+This script serves two functions:
+1. Has helper code for cron.py
+2. Has update_ortho code that is triggered if the script is called directly
+instead of importing - this communicates with db and is the only part
+responsible for inserts/updates into the database
+'''
+
 import os
 import sys
 import pyproj
@@ -25,28 +33,41 @@ def connectDb():
     return client, collection
 
 
-def update_ortho(flight_dir, flight_id):
-    source_crs = readCRS(flight_dir)
-    query = {'flight_id': flight_id}
-    orthophoto_path = os.path.join(flight_dir, 'odm_orthophoto',
-                                   'odm_orthophoto.tif')
-    cog_path = os.path.join(flight_dir, 'odm_orthophoto',
-                            'cog.tif')
-    veg_index_folder = os.path.join(flight_dir, 'veg_indices')
+def update_ortho(flight_dir, flight_id, status):
+    try:
+        if status == 'processed':
+            source_crs = readCRS(flight_dir)
 
-    update = {"$set": {
-        "orthophoto_path": orthophoto_path,
-        "cog_path": cog_path,
-        "orthophoto_source_crs": source_crs,
-        "veg_index_folder": veg_index_folder,
-        "status": "processed"
-    }}
+            orthophoto_path = os.path.join(flight_id, 'odm_orthophoto',
+                                           'odm_orthophoto.tif')
+            cog_path = os.path.join(flight_id, 'odm_orthophoto',
+                                    'odm_orthophoto_cog.tif')
+            veg_index_folder = os.path.join(flight_id, 'veg_indices')
 
-    client, db_collection = connectDb()
-    db_collection.update(query, update)
+            query = {'flight_id': flight_id}
+            update = {"$set": {
+                "orthophoto_path": orthophoto_path,
+                "cog_path": cog_path,
+                "orthophoto_source_crs": source_crs,
+                "veg_index_folder": veg_index_folder,
+                "status": "processed"
+            }}
+
+            client, db_collection = connectDb()
+            db_collection.update_one(query, update, upsert=True)
+        elif status == 'processing':
+            query = {'flight_id': flight_id}
+            update = {"$set": {
+                "status": "processing"
+            }}
+            client, db_collection = connectDb()
+            db_collection.update_one(query, update, upsert=True)
+    except Exception as e:
+        print('except', e)
 
 
 if __name__ == '__main__':
     flight_dir = sys.argv[1]
     flight_id = sys.argv[2]
-    update_ortho(flight_dir, flight_id)
+    status = sys.argv[3]
+    update_ortho(flight_dir, flight_id, status)
