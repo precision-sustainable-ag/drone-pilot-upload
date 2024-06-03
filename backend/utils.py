@@ -301,94 +301,100 @@ def calcGSD(exif_info):
 def getExifInfo(flight_details):
     # TODO: exifinfo for multispec
     # TODO: get gps info added (and bounding box for the whole flight)
+    try:
+        logging.info({
+            'flight_id': flight_details['flight_id'],
+            'service': 'exif information',
+            'message': 'processing started'
+        })
 
-    logging.info({
-        'flight_id': flight_details['flight_id'],
-        'service': 'exif information',
-        'message': 'processing started'
-    })
+        with exiftool.ExifTool() as et:
+            first_image_exif_info = et.get_metadata(
+                flight_details['flight_images'][0])
 
-    with exiftool.ExifTool() as et:
-        first_image_exif_info = et.get_metadata(
-            flight_details['flight_images'][0])
+        camera_make = first_image_exif_info['EXIF:Make']
+        camera_model = first_image_exif_info['EXIF:Model']
+        flight_details['camera_make'] = camera_make
+        flight_details['camera_model'] = camera_model
+        flight_details['gsd'] = calcGSD(first_image_exif_info)
+        flight_details['file_type'] = first_image_exif_info['File:FileType']
 
-    camera_make = first_image_exif_info['EXIF:Make']
-    camera_model = first_image_exif_info['EXIF:Model']
-    flight_details['camera_make'] = camera_make
-    flight_details['camera_model'] = camera_model
-    flight_details['gsd'] = calcGSD(first_image_exif_info)
-    flight_details['file_type'] = first_image_exif_info['File:FileType']
+        logging.info({
+            'flight_id': flight_details['flight_id'],
+            'service': 'exif information',
+            'message': 'extracted common exif information'
+        })
 
-    logging.info({
-        'flight_id': flight_details['flight_id'],
-        'service': 'exif information',
-        'message': 'extracted common exif information'
-    })
+        date_format = '%Y:%m:%d %H:%M:%S'
+        min_date = max_date = image_date = datetime.strptime(
+            first_image_exif_info['EXIF:CreateDate'], date_format)
 
-    date_format = '%Y:%m:%d %H:%M:%S'
-    min_date = max_date = image_date = datetime.strptime(
-        first_image_exif_info['EXIF:CreateDate'], date_format)
+        coordinate_data = []
+        with exiftool.ExifTool() as et:
+            all_img_exif_info = et.get_metadata_batch(flight_details[
+                                                          'flight_images'])
 
-    coordinate_data = []
-    with exiftool.ExifTool() as et:
-        all_img_exif_info = et.get_metadata_batch(flight_details[
-                                                      'flight_images'])
+        for exif_info in all_img_exif_info:
+            if 'EXIF:CreateDate' in exif_info.keys():
+                image_date = datetime.strptime(exif_info['EXIF:CreateDate'],
+                                               date_format)
+            if image_date < min_date:
+                min_date = image_date
+            if image_date > max_date:
+                max_date = image_date
+            # TODO: coordinates also have s/w (which makes it negative)
+            if 'EXIF:GPSLatitude' in exif_info.keys() and 'EXIF:GPSLongitude' \
+                    in exif_info.keys():
+                coordinate_data.append({
+                    'Latitude': exif_info['EXIF:GPSLatitude'] if exif_info[
+                                                                     'EXIF:GPSLatitudeRef'].lower() == 'n' else -(
+                        exif_info['EXIF:GPSLatitude']),
+                    'Longitude': exif_info['EXIF:GPSLongitude'] if exif_info[
+                                                                       'EXIF:GPSLongitudeRef'].lower() == 'e' else -(
+                        exif_info['EXIF:GPSLongitude']),
+                })
+        flight_details['mission_start_time'] = min_date
+        flight_details['mission_end_time'] = max_date
 
-    for exif_info in all_img_exif_info:
-        if 'EXIF:CreateDate' in exif_info.keys():
-            image_date = datetime.strptime(exif_info['EXIF:CreateDate'],
-                                           date_format)
-        if image_date < min_date:
-            min_date = image_date
-        if image_date > max_date:
-            max_date = image_date
-        # TODO: coordinates also have s/w (which makes it negative)
-        if 'EXIF:GPSLatitude' in exif_info.keys() and 'EXIF:GPSLongitude' \
-                in exif_info.keys():
-            coordinate_data.append({
-                'Latitude': exif_info['EXIF:GPSLatitude'] if exif_info[
-                                                                 'EXIF:GPSLatitudeRef'].lower() == 'n' else -(
-                    exif_info['EXIF:GPSLatitude']),
-                'Longitude': exif_info['EXIF:GPSLongitude'] if exif_info[
-                                                                   'EXIF:GPSLongitudeRef'].lower() == 'e' else -(
-                    exif_info['EXIF:GPSLongitude']),
-            })
-    flight_details['mission_start_time'] = min_date
-    flight_details['mission_end_time'] = max_date
+        logging.info({
+            'flight_id': flight_details['flight_id'],
+            'service': 'exif information',
+            'message': 'extracted flight time and gps information'
+        })
 
-    logging.info({
-        'flight_id': flight_details['flight_id'],
-        'service': 'exif information',
-        'message': 'extracted flight time and gps information'
-    })
+        # TODO: Check if geoDF can be added to the database or atleast geometry
+        #  objects
+        temp_df = pd.DataFrame(coordinate_data)
+        geo_df = geopandas.GeoDataFrame(
+            temp_df, geometry=geopandas.points_from_xy(temp_df.Longitude,
+                                                       temp_df.Latitude),
+            crs="EPSG:4326"
+        )
+        flight_details['flight_polygon'] = {"type": "GeometryCollection",
+                                            "geometries": [json.loads(x) for x in
+                                                           shapely.to_geojson(
+                                                               geo_df[
+                                                                   'geometry'].tolist())]}
+        total_bounds = geo_df.total_bounds
+        xmin, ymin, xmax, ymax = total_bounds.tolist()
+        geom = box(xmin, ymin, xmax, ymax)
+        original_polygon = [list(x) for x in mapping(
+            geom)['coordinates'][0]][:4]
+        new_polygon = changeCRS('EPSG:4326', 'EPSG:3857', original_polygon)
+        flight_details['flight_bounding_box'] = original_polygon
+        flight_details['flight_bounding_box_3857'] = new_polygon
 
-    # TODO: Check if geoDF can be added to the database or atleast geometry
-    #  objects
-    temp_df = pd.DataFrame(coordinate_data)
-    geo_df = geopandas.GeoDataFrame(
-        temp_df, geometry=geopandas.points_from_xy(temp_df.Longitude,
-                                                   temp_df.Latitude),
-        crs="EPSG:4326"
-    )
-    flight_details['flight_polygon'] = {"type": "GeometryCollection",
-                                        "geometries": [json.loads(x) for x in
-                                                       shapely.to_geojson(
-                                                           geo_df[
-                                                               'geometry'].tolist())]}
-    total_bounds = geo_df.total_bounds
-    xmin, ymin, xmax, ymax = total_bounds.tolist()
-    geom = box(xmin, ymin, xmax, ymax)
-    original_polygon = [list(x) for x in mapping(
-        geom)['coordinates'][0]][:4]
-    new_polygon = changeCRS('EPSG:4326', 'EPSG:3857', original_polygon)
-    flight_details['flight_bounding_box'] = original_polygon
-    flight_details['flight_bounding_box_3857'] = new_polygon
-
-    logging.info({
-        'flight_id': flight_details['flight_id'],
-        'service': 'exif information',
-        'message': 'computed flight bounds'
-    })
+        logging.info({
+            'flight_id': flight_details['flight_id'],
+            'service': 'exif information',
+            'message': 'computed flight bounds'
+        })
+    except Exception as e:
+        logging.info({
+            'flight_id': flight_details['flight_id'],
+            'service': 'exif information',
+            'error': e
+        })
     return flight_details
 
 
