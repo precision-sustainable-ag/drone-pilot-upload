@@ -32,7 +32,8 @@ drone-pilot-upload
 2. Clone repo: `git clone https://github.com/precision-sustainable-ag/drone-pilot-upload.git`
 3. Frontend:
    1. Install dependencies: `cd frontend && npm install`
-   2. Run `npm run start`
+   2. Create `.env` file in frontend folder with `REACT_APP_API_URL='http://localhost:5000/imgproc'`
+   3. Run `npm run start`
 5. Backend:
     1. Create a python virtual environment: `python3.9 -m venv ./backend/venv`
     2. Install python dependencies: `./backend/venv/bin/python3 -m pip install -r ./backend/requirements.txt`
