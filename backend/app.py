@@ -6,7 +6,7 @@ from flask import Flask, Request
 from flask_cors import CORS
 import utils
 from config import config
-import sentry_sdk
+# import sentry_sdk
 
 
 class CustomRequest(Request):
@@ -15,12 +15,12 @@ class CustomRequest(Request):
         self.max_form_parts = config['max_file_count']
 
 
-sentry_sdk.init(
-    dsn="http://b309d193beabb2ee01d0b04013ee8554@20.169.137.216//3",
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-    traces_sample_rate=1.0,debug=True,environment='test'
-)
+# sentry_sdk.init(
+#     dsn="http://b309d193beabb2ee01d0b04013ee8554@20.169.137.216//3",
+#     # Set traces_sample_rate to 1.0 to capture 100%
+#     # of transactions for performance monitoring.
+#     traces_sample_rate=1.0,debug=True,environment='test'
+# )
 
 app = Flask(__name__)
 app.request_class = CustomRequest
