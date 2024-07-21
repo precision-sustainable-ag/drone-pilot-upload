@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 import glob               # use module to count files given an extension
 import subprocess         # to execute linux command better than os.sys because executed command is returned
-
+import json               # use to parse the json.log file in ../code/json.log
 
 # Algorithm
 # 1- get flight information from database
@@ -101,6 +101,24 @@ def generateLsfScript(UUID):
         print('except ', e)
     return lsfScriptName
 
+# How do you determine the job is completed? lsf bjobs?
+
+# After job is completed extract completion status and other information
+def parseJsonLogFile(key):
+    try:
+        fobj = open('%s/code/log.json'%OUTPUT_DIR_5,'r')
+        pdictionary = json.loads(fobj.read())
+        value=pdictionary[key]
+        #True
+        print(f' The value of {key} is {value} \n')
+        #print(pdictionary["endTime"])
+        #2024-06-12T18:13:54.654246
+        #print(pdictionary["totalTime"])
+        #71858.15
+        fobj.close()
+    except Exception as e:
+        print('except ', e)
+    return value
 
 ## main to call an execute auxillary functions
 #
@@ -118,6 +136,9 @@ def main():
         lsfJobID=submitJob(lsfscript)
         print(f' Job has been submitted to the Hazel HPC with ID {lsfJobID}\n')
     # check to see if job has completed successfuly or if it has failed
+    jobStatus=parseJsonLogFile("success")
+    jobEndTime=parseJsonLogFile("endTime")
+    jobtotalTime=parseJsonLogFile("totalTime")
     return None
 
 if __name__ == '__main__':
