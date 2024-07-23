@@ -17,7 +17,8 @@ import json               # use to parse the json.log file in ../code/json.log
 #           - 5.1.1 move computation product to designated folder
 #     - 5.2 job failed if no report found
 #           - 5.2.1 consult error output and fix the issue to then resubmit the job
-# 6 - input job status in dab.
+# 6 - Monitor running jobs
+#   - 6.1 input job status in db.
 
 ## Set global variables
 ## Read flight information from database
@@ -88,6 +89,23 @@ def submitJob(lsfscript):
 
     return jobID
 
+def monitoreJob(jobID):
+    statusList = ["RUN","PEND"]
+    status ="RUN"
+    try:
+        while status in statusList:
+            jobid = jobID
+            result = subprocess.run(["bjobs -r %d "%(jobid)], shell=True, capture_output=True, text=True)
+            status = result.stdout.split()[10]
+            if status=="RUN":
+                pass
+            elif status=="PEND":
+                pass
+            else:
+                print("Job %d is no longer running"%jobID)
+    except Exception as e:
+        print('except ', e)
+return status
 ## Generate lsf submission script
 #
 def generateLsfScript(UUID):
@@ -129,13 +147,18 @@ def main():
     imgExt='tif'
     path=RAW_IMAGE_DIR
     countedImages=countImages(path,imgExt)
+    jobID=0
     if numberOfImages==countedImages:
         # Generate LSF submission files
         lsfscript=generateLsfScript(UUID)
         # submit job to lsf scheduler and get the job ID
-        lsfJobID=submitJob(lsfscript)
-        print(f' Job has been submitted to the Hazel HPC with ID {lsfJobID}\n')
+        JobID=int(submitJob(lsfscript))
+        print(f' Job has been submitted to the Hazel HPC with ID {jobID}\n')
+    #Monitor job
+    status=monitoreJob(jobID)
     # check to see if job has completed successfuly or if it has failed
+    # if job is successful then the log.json exist if not it doesn't
+    # Verify that log.json exist
     jobStatus=parseJsonLogFile("success")
     jobEndTime=parseJsonLogFile("endTime")
     jobtotalTime=parseJsonLogFile("totalTime")
