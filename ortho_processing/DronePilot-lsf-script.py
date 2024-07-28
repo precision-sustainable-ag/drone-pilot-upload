@@ -1,7 +1,8 @@
-#! /usr/bin/python3
+
 import glob               # use module to count files given an extension
 import subprocess         # to execute linux command better than os.sys because executed command is returned
 import json               # use to parse the json.log file in ../code/json.log
+import os
 
 # Algorithm
 # 1- get flight information from database
@@ -26,11 +27,11 @@ UUID="93238409-1871-4b81-bd25-cf0c26f50c9c"  # this is a unique identifier
 ROOT_DIR="/rs1/shares/cals-research-station/sandhills/transfer/"
 RELATIVE_IMAGEDIR="benchmark/0004SET/images"      # this is relative to the root directory
 RAW_IMAGE_DIR=ROOT_DIR + RELATIVE_IMAGEDIR
-lsfJobID=""                           # Initialize job id after submission
+jobID=""                           # Initialize job id after submission
                                       # to lsf scheduler
 
 ## Set variables for the LSF submission scripts
-JOB_RUNTIME_1="20:00"  # 20 hours and zero minutes
+JOB_RUNTIME_1="25:00"  # 25 hours and zero minutes
 JOB_NAME_23=UUID
 SCRATCH_DIR_4="/share/hpc-support/jfossot/tmp"
 RELATIVE_OUTPUTDIR="benchmark/HPC/testcron"
@@ -45,11 +46,11 @@ PATH_2_SIF_7="../gpu/odm_gpu.sif"
 ## define LSF submission script template
 #
 lsfTemplate='''#!/bin/bash
-#BSUB -n 1
+#BSUB -n 8
 ## requested job run time
 #BSUB -W %s
 #BSUB -q gpu
-#BSUB -R "select[ a100 ]"
+#BSUB -R "select[ a100 || a10 || a30 ]"
 #BSUB -gpu "num=1:mode=shared:mps=no"
 ## Tag general output file and std error output
 #BSUB -o out-gpu.%s
@@ -78,34 +79,40 @@ def countImages(path,imgExt):
 
 ## function to submit lsf job on Hazel cluster
 def submitJob(lsfscript):
-    jobID=''
     # use python subprocess to execute linux command and collect the output
     # returned as A CLASS object formated as string
     try:
         result = subprocess.run(["bsub < %s"%(lsfscript)], shell=True, capture_output=True, text=True)
-        jobID = result.stdout.split('>')[0].split('<')[1]
+        jobid = result.stdout.split('>')[0].split('<')[1]
     except Exception as e:
         print('except ', e)
-
-    return jobID
+    return jobid
 
 def monitoreJob(jobID):
     statusList = ["RUN","PEND"]
     status ="RUN"
+    print(f"\n Job with id {jobID} is being monitored \n")
     try:
         while status in statusList:
-            jobid = jobID
-            result = subprocess.run(["bjobs -r %d "%(jobid)], shell=True, capture_output=True, text=True)
-            status = result.stdout.split()[10]
-            if status=="RUN":
-                pass
-            elif status=="PEND":
-                pass
-            else:
-                print("Job %d is no longer running"%jobID)
+            result = subprocess.run(["bjobs -r %d "%(jobID)], shell=True, capture_output=True, text=True)
+            if len(result.stdout.split())>10:
+                status = result.stdout.split()[10]
+                if status=="RUN":
+                    #print("Job %d is  running"%jobID)
+                    pass
+                elif status=="PEND": 
+                    print(f"Job {jobID} is pending. Status {status}\n")
+                else:
+                    pass
+        result = subprocess.run(["bjobs -r %d "%(jobID)], shell=True, capture_output=True, text=True)
+        if len(result.stdout.split())<10:
+            print(f"Job {jobID} is no longer running, Status: {status}")
+        else:
+            print(f"Job {jobID} is no longer running, Status: {status}")
     except Exception as e:
         print('except ', e)
-return status
+    return status
+
 ## Generate lsf submission script
 #
 def generateLsfScript(UUID):
@@ -147,21 +154,30 @@ def main():
     imgExt='tif'
     path=RAW_IMAGE_DIR
     countedImages=countImages(path,imgExt)
-    jobID=0
     if numberOfImages==countedImages:
         # Generate LSF submission files
         lsfscript=generateLsfScript(UUID)
         # submit job to lsf scheduler and get the job ID
-        JobID=int(submitJob(lsfscript))
+        jobID=int(submitJob(lsfscript))
         print(f' Job has been submitted to the Hazel HPC with ID {jobID}\n')
     #Monitor job
     status=monitoreJob(jobID)
     # check to see if job has completed successfuly or if it has failed
     # if job is successful then the log.json exist if not it doesn't
     # Verify that log.json exist
-    jobStatus=parseJsonLogFile("success")
-    jobEndTime=parseJsonLogFile("endTime")
-    jobtotalTime=parseJsonLogFile("totalTime")
+#    print(f"Job with id {jobID} has status {status}\n")
+    if status=="EXIT": 
+        print(f"Job with id {jobID} did not complete successfully")
+    else:
+        codePath=OUTPUT_DIR_5 + "/code"
+        files = [f for f in os.listdir(codePath) if os.path.isfile(f)]
+        for f in files:
+            if f=="log.json":
+                jobStatus=parseJsonLogFile("success")
+                jobEndTime=parseJsonLogFile("endTime")
+                jobtotalTime=parseJsonLogFile("totalTime")
+                print(f"{jobID} completed at {jobEndTime} running for {totalTime} secs")
+
     return None
 
 if __name__ == '__main__':
