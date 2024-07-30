@@ -1,8 +1,11 @@
 #! /usr/local/apps/miniconda20230420/bin/python3
-import glob               # use module to count files given an extension
-import subprocess         # to execute linux command better than os.sys because executed command is returned
-import json               # use to parse the json.log file in ../code/json.log
+import glob  # use module to count files given an extension
+import \
+    subprocess  # to execute linux command better than os.sys because executed command is returned
+import json  # use to parse the json.log file in ../code/json.log
 import os
+import sys
+import utils
 
 # Algorithm
 # 1- get flight information from database
@@ -23,30 +26,30 @@ import os
 
 ## Set global variables
 ## Read flight information from database
-FLIGHT_ID="93238409-1871-4b81-bd25-cf0c26f50c9c"  # this is a unique identifier
-ROOT_DIR="/rs1/shares/cals-research-station/sandhills/transfer/"
-SOFTWARE_DIR="/rs1/shares/cals-research-station/sandhills/software"
-IMAGEDIR=ROOT_DIR + FLIGHT_ID + "/images"
-#RELATIVE_IMAGEDIR="benchmark/0004SET/images"      # this is relative to the root directory
-jobID=""                           # Initialize job id after submission
-                                      # to lsf scheduler
+# FLIGHT_ID = "93238409-1871-4b81-bd25-cf0c26f50c9c"  # this is a unique identifier
+# ROOT_DIR = "/rs1/shares/cals-research-station/sandhills/transfer/"
+SOFTWARE_DIR = "/rs1/shares/cals-research-station/sandhills/software"
+# IMAGEDIR = ROOT_DIR + FLIGHT_ID + "/images"
+# RELATIVE_IMAGEDIR="benchmark/0004SET/images"      # this is relative to the root directory
+jobID = ""  # Initialize job id after submission
+# to lsf scheduler
 
 ## Set variables for the LSF submission scripts
-JOB_RUNTIME_1="25:00"  # 25 hours and zero minutes
-JOB_NAME_23=FLIGHT_ID 
-SCRATCH_DIR_4="/share/hpc-support/jfossot/tmp"
+JOB_RUNTIME_1 = "25:00"  # 25 hours and zero minutes
+# JOB_NAME_23 = FLIGHT_ID
+SCRATCH_DIR_4 = "/share/hpc-support/jfossot/tmp"
 
 ##RELATIVE_OUTPUTDIR="benchmark/HPC/testcron"
-RELATIVE_OUTPUTDIR=FLIGHT_ID
-#RELATIVE_IMAGEDIR="benchmark/0004SET/images"
-OUTPUT_DIR_5=ROOT_DIR + RELATIVE_OUTPUTDIR
-IMAGE_DIR_6=ROOT_DIR + IMAGEDIR
+# RELATIVE_OUTPUTDIR = FLIGHT_ID
+# RELATIVE_IMAGEDIR="benchmark/0004SET/images"
+# OUTPUT_DIR_5 = ROOT_DIR + RELATIVE_OUTPUTDIR
+# IMAGE_DIR_6 = ROOT_DIR + IMAGEDIR
 # the path to the singularity image file (SIF)
-PATH_2_SIF_7=SOFTWARE_DIR +"/odm_gpu.sif"
+PATH_2_SIF_7 = SOFTWARE_DIR + "/odm_gpu.sif"
 
 ## define LSF submission script template
 #
-lsfTemplate='''#!/bin/bash
+lsfTemplate = '''#!/bin/bash
 #BSUB -n 8
 ## requested job run time
 #BSUB -W %s
@@ -67,46 +70,54 @@ singularity run --bind $output_dir/code/images,$tmp_dir --writable-tmpfs --nv %s
 --feature-quality ultra --min-num-features 50000 --project-path $output_dir --dsm --dtm
 '''
 
+
 ## Function to count number images in the folder,
 # using the image extension
-def countImages(path,imgExt):
+def countFilesOIT(path):
     print(f'\n Counting images in the OIT storage')
-    try:
-        countImages = len(glob.glob1(path, "*.%s"%imgExt))
-        print(f' \n Counted {countImages} images \n')
-    except Exception as e:
-        print('except ', e)
-    return countImages
+    return len([f for f in os.listdir(path) if os.path.isfile(os.path.join(
+        path, f))])
+    # try:
+    #     countImages = len(glob.glob1(path, "*.%s" % imgExt))
+    #     print(f' \n Counted {countImages} images \n')
+    # except Exception as e:
+    #     print('except ', e)
+    # return countImages
+
 
 ## function to submit lsf job on Hazel cluster
 def submitJob(lsfscript):
     # use python subprocess to execute linux command and collect the output
     # returned as A CLASS object formated as string
     try:
-        result = subprocess.run(["bsub < %s"%(lsfscript)], shell=True, capture_output=True, text=True)
+        result = subprocess.run(["bsub < %s" % (lsfscript)], shell=True,
+                                capture_output=True, text=True)
         jobid = result.stdout.split('>')[0].split('<')[1]
     except Exception as e:
         print('except ', e)
     return jobid
 
+
 def monitoreJob(jobID):
-    statusList = ["RUN","PEND"]
-    status ="RUN"
+    statusList = ["RUN", "PEND"]
+    status = "RUN"
     print(f"\n Job with id {jobID} is being monitored \n")
     try:
         while status in statusList:
-            result = subprocess.run(["bjobs -r %d "%(jobID)], shell=True, capture_output=True, text=True)
-            if len(result.stdout.split())>10:
+            result = subprocess.run(["bjobs -r %d " % (jobID)], shell=True,
+                                    capture_output=True, text=True)
+            if len(result.stdout.split()) > 10:
                 status = result.stdout.split()[10]
-                if status=="RUN":
-                    #print("Job %d is  running"%jobID)
+                if status == "RUN":
+                    # print("Job %d is  running"%jobID)
                     pass
-                elif status=="PEND": 
+                elif status == "PEND":
                     print(f"Job {jobID} is pending. Status {status}\n")
                 else:
                     pass
-        result = subprocess.run(["bjobs -r %d "%(jobID)], shell=True, capture_output=True, text=True)
-        if len(result.stdout.split())<10:
+        result = subprocess.run(["bjobs -r %d " % (jobID)], shell=True,
+                                capture_output=True, text=True)
+        if len(result.stdout.split()) < 10:
             print(f"Job {jobID} is no longer running, Status: {status}")
         else:
             print(f"Job {jobID} is no longer running, Status: {status}")
@@ -114,73 +125,94 @@ def monitoreJob(jobID):
         print('except ', e)
     return status
 
+
 ## Generate lsf submission script
 #
-def generateLsfScript(FLIGHT_ID):
+def generateLsfScript(flight_dir, flight_id):
     try:
-        lsfScriptName="%s-lsf.sh"%FLIGHT_ID
+        lsfScriptName = "%s-lsf.sh" % flight_id
         f = open(lsfScriptName, "w")
-        f.write(lsfTemplate%(JOB_RUNTIME_1,JOB_NAME_23,JOB_NAME_23,SCRATCH_DIR_4,OUTPUT_DIR_5,IMAGE_DIR_6,PATH_2_SIF_7))
+        f.write(lsfTemplate % (
+            JOB_RUNTIME_1, flight_id, flight_id, SCRATCH_DIR_4,
+            flight_dir,
+            os.path.join(flight_dir, 'images'), PATH_2_SIF_7))
         f.close()
         print(f' LSF submission script written in file {lsfScriptName} \n')
     except Exception as e:
         print('except ', e)
     return lsfScriptName
 
+
 # How do you determine the job is completed? lsf bjobs?
 
 # After job is completed extract completion status and other information
-def parseJsonLogFile(key):
+def parseJsonLogFile(key, flight_dir):
     try:
-        fobj = open('%s/code/log.json'%OUTPUT_DIR_5,'r')
+        fobj = open('%s/code/log.json' % flight_dir, 'r')
         pdictionary = json.loads(fobj.read())
-        value=pdictionary[key]
-        #True
+        value = pdictionary[key]
+        # True
         print(f' The value of {key} is {value} \n')
-        #print(pdictionary["endTime"])
-        #2024-06-12T18:13:54.654246
-        #print(pdictionary["totalTime"])
-        #71858.15
+        # print(pdictionary["endTime"])
+        # 2024-06-12T18:13:54.654246
+        # print(pdictionary["totalTime"])
+        # 71858.15
         fobj.close()
     except Exception as e:
         print('except ', e)
     return value
 
+
+def get_file_count(flight_id):
+    # gets all flights uploaded yesterday
+    client, db_collection = utils.connectDb()
+    query = {'flight_id': flight_id}
+    result = db_collection.find(query)[0]
+    return result['num_files']
+
+
 ## main to call an execute auxillary functions
 #
-def main():
+def main(flight_dir, flight_id):
     # Get number of images uploaded to the database
-    numberOfImages=13355                  
+    dbFileCount = get_file_count(flight_id)
     # count images in the flight folder on OIT storage
-    imgExt='tif'
-    path=IMAGEDIR
-    countedImages=countImages(path,imgExt)
-    if numberOfImages==countedImages:
+    imgExt = 'tif'
+    # path = IMAGEDIR
+    path = os.path.join(flight_dir, 'images')
+    oitFileCount = countFilesOIT(path)
+    if dbFileCount == oitFileCount:
         # Generate LSF submission files
-        lsfscript=generateLsfScript(FLIGHT_ID)
+        # lsfscript = generateLsfScript(FLIGHT_ID)
+        lsfscript = generateLsfScript(flight_dir, flight_id)
         # submit job to lsf scheduler and get the job ID
-        jobID=int(submitJob(lsfscript))
+        jobID = int(submitJob(lsfscript))
         print(f' Job has been submitted to the Hazel HPC with ID {jobID}\n')
-    #Monitor job
-    status =""
-    status=monitoreJob(jobID)
+    # Monitor job
+    status = ""
+    status = monitoreJob(jobID)
     # check to see if job has completed successfuly or if it has failed
     # if job is successful then the log.json exist if not it doesn't
     # Verify that log.json exist
-    #print(f"Job with id {jobID} has status {status}\n")
-    if status=="EXIT": 
+    # print(f"Job with id {jobID} has status {status}\n")
+    if status == "EXIT":
         print(f"Job with id {jobID} did not complete successfully")
     else:
-        codePath = OUTPUT_DIR_5 + "/code"
-        files = [f for f in os.listdir(codePath) if os.path.isfile(os.path.join(codePath,f))]
+        codePath = flight_dir + "/code"
+        files = [f for f in os.listdir(codePath) if
+                 os.path.isfile(os.path.join(codePath, f))]
         for f in files:
-            if f=="log.json":
-                jobStatus=parseJsonLogFile("success")
-                jobEndTime=parseJsonLogFile("endTime")
-                jobTotalTime=parseJsonLogFile("totalTime")
-                print(f"{jobID} completed at {jobEndTime} running for {jobTotalTime} secs")
+            if f == "log.json":
+                jobStatus = parseJsonLogFile("success", flight_dir)
+                jobEndTime = parseJsonLogFile("endTime", flight_dir)
+                jobTotalTime = parseJsonLogFile("totalTime", flight_dir)
+                print(
+                    f"{jobID} completed at {jobEndTime} running for {jobTotalTime} secs")
 
     return None
 
+
 if __name__ == '__main__':
-    main()
+    flight_dir = sys.argv[1]
+    flight_id = sys.argv[2]
+    main(flight_dir, flight_id)

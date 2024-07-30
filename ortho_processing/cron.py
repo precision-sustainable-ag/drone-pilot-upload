@@ -16,7 +16,9 @@ from config import config
 def trigger(flight_id):
     try:
         flight_dir = os.path.join(config['flights_dir'], flight_id)
-        results = subprocess.run(['./generate_ortho.sh', flight_dir, flight_id])
+        # results = subprocess.run(['./generate_ortho.sh', flight_dir, flight_id])
+        results = subprocess.run(['./DronePilot-lsf-script.py', flight_dir,
+                                  flight_id])
         # print(flight_dir)
     except Exception as e:
         print('except ', e)
