@@ -186,6 +186,8 @@ def main(flight_dir, flight_id):
         # lsfscript = generateLsfScript(FLIGHT_ID)
         lsfscript = generateLsfScript(flight_dir, flight_id)
         # submit job to lsf scheduler and get the job ID
+        subprocess.run(
+            ['python3 ./utils.py', flight_dir, flight_id, 'processing'])
         jobID = int(submitJob(lsfscript))
         print(f' Job has been submitted to the Hazel HPC with ID {jobID}\n')
     # Monitor job
@@ -197,18 +199,22 @@ def main(flight_dir, flight_id):
     # print(f"Job with id {jobID} has status {status}\n")
     if status == "EXIT":
         print(f"Job with id {jobID} did not complete successfully")
+        subprocess.run(
+            ['python3 ./utils.py', flight_dir, flight_id, 'failed'])
     else:
         codePath = flight_dir + "/code"
         files = [f for f in os.listdir(codePath) if
                  os.path.isfile(os.path.join(codePath, f))]
         for f in files:
             if f == "log.json":
-                jobStatus = parseJsonLogFile("success", flight_dir)
+                processingStatus = parseJsonLogFile("success", flight_dir)
                 jobEndTime = parseJsonLogFile("endTime", flight_dir)
                 jobTotalTime = parseJsonLogFile("totalTime", flight_dir)
                 print(
                     f"{jobID} completed at {jobEndTime} running for {jobTotalTime} secs")
-
+                subprocess.run(
+                    ['python3 ./utils.py', flight_dir, flight_id,
+                     'processed' if processingStatus else 'failed'])
     return None
 
 
