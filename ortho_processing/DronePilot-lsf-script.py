@@ -1,4 +1,4 @@
-
+#! /usr/local/apps/miniconda20230420/bin/python3
 import glob               # use module to count files given an extension
 import subprocess         # to execute linux command better than os.sys because executed command is returned
 import json               # use to parse the json.log file in ../code/json.log
@@ -161,22 +161,23 @@ def main():
         jobID=int(submitJob(lsfscript))
         print(f' Job has been submitted to the Hazel HPC with ID {jobID}\n')
     #Monitor job
+    status =""
     status=monitoreJob(jobID)
     # check to see if job has completed successfuly or if it has failed
     # if job is successful then the log.json exist if not it doesn't
     # Verify that log.json exist
-#    print(f"Job with id {jobID} has status {status}\n")
+    #print(f"Job with id {jobID} has status {status}\n")
     if status=="EXIT": 
         print(f"Job with id {jobID} did not complete successfully")
     else:
-        codePath=OUTPUT_DIR_5 + "/code"
-        files = [f for f in os.listdir(codePath) if os.path.isfile(f)]
+        codePath = OUTPUT_DIR_5 + "/code"
+        files = [f for f in os.listdir(codePath) if os.path.isfile(os.path.join(codePath,f))]
         for f in files:
             if f=="log.json":
                 jobStatus=parseJsonLogFile("success")
                 jobEndTime=parseJsonLogFile("endTime")
-                jobtotalTime=parseJsonLogFile("totalTime")
-                print(f"{jobID} completed at {jobEndTime} running for {totalTime} secs")
+                jobTotalTime=parseJsonLogFile("totalTime")
+                print(f"{jobID} completed at {jobEndTime} running for {jobTotalTime} secs")
 
     return None
 
