@@ -23,25 +23,26 @@ import os
 
 ## Set global variables
 ## Read flight information from database
-UUID="93238409-1871-4b81-bd25-cf0c26f50c9c"  # this is a unique identifier
+FLIGHT_ID="93238409-1871-4b81-bd25-cf0c26f50c9c"  # this is a unique identifier
 ROOT_DIR="/rs1/shares/cals-research-station/sandhills/transfer/"
-RELATIVE_IMAGEDIR="benchmark/0004SET/images"      # this is relative to the root directory
-RAW_IMAGE_DIR=ROOT_DIR + RELATIVE_IMAGEDIR
+SOFTWARE_DIR="/rs1/shares/cals-research-station/sandhills/software"
+IMAGEDIR=ROOT_DIR + FLIGHT_ID + "/images"
+#RELATIVE_IMAGEDIR="benchmark/0004SET/images"      # this is relative to the root directory
 jobID=""                           # Initialize job id after submission
                                       # to lsf scheduler
 
 ## Set variables for the LSF submission scripts
 JOB_RUNTIME_1="25:00"  # 25 hours and zero minutes
-JOB_NAME_23=UUID
+JOB_NAME_23=FLIGHT_ID 
 SCRATCH_DIR_4="/share/hpc-support/jfossot/tmp"
-RELATIVE_OUTPUTDIR="benchmark/HPC/testcron"
-RELATIVE_IMAGEDIR="benchmark/0004SET/images"
+
+##RELATIVE_OUTPUTDIR="benchmark/HPC/testcron"
+RELATIVE_OUTPUTDIR=FLIGHT_ID
+#RELATIVE_IMAGEDIR="benchmark/0004SET/images"
 OUTPUT_DIR_5=ROOT_DIR + RELATIVE_OUTPUTDIR
-IMAGE_DIR_6=ROOT_DIR + RELATIVE_IMAGEDIR
-# the path to the singularity image file (SIF) should be relative
-# to the output directory
-# RELATIVE_SIF_PATH="benchmark/HPC/gpu/odm_gpu.sif"
-PATH_2_SIF_7="../gpu/odm_gpu.sif"
+IMAGE_DIR_6=ROOT_DIR + IMAGEDIR
+# the path to the singularity image file (SIF)
+PATH_2_SIF_7=SOFTWARE_DIR +"/odm_gpu.sif"
 
 ## define LSF submission script template
 #
@@ -115,9 +116,9 @@ def monitoreJob(jobID):
 
 ## Generate lsf submission script
 #
-def generateLsfScript(UUID):
+def generateLsfScript(FLIGHT_ID):
     try:
-        lsfScriptName="%s-lsf.sh"%UUID
+        lsfScriptName="%s-lsf.sh"%FLIGHT_ID
         f = open(lsfScriptName, "w")
         f.write(lsfTemplate%(JOB_RUNTIME_1,JOB_NAME_23,JOB_NAME_23,SCRATCH_DIR_4,OUTPUT_DIR_5,IMAGE_DIR_6,PATH_2_SIF_7))
         f.close()
@@ -152,11 +153,11 @@ def main():
     numberOfImages=13355                  
     # count images in the flight folder on OIT storage
     imgExt='tif'
-    path=RAW_IMAGE_DIR
+    path=IMAGEDIR
     countedImages=countImages(path,imgExt)
     if numberOfImages==countedImages:
         # Generate LSF submission files
-        lsfscript=generateLsfScript(UUID)
+        lsfscript=generateLsfScript(FLIGHT_ID)
         # submit job to lsf scheduler and get the job ID
         jobID=int(submitJob(lsfscript))
         print(f' Job has been submitted to the Hazel HPC with ID {jobID}\n')
