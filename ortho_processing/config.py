@@ -7,5 +7,6 @@ config = {
         'auth_source': 'admin',
         'collection': 'flight-information'
     },
-    'flights_dir': '/Users/jbshah/_p/test/backend_storage/flights/'
+    'flights_dir': '/rs1/shares/cals-research-station/sandhills/transfer'
+                   '/flights/'
 }
