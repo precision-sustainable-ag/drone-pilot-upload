@@ -98,6 +98,8 @@ def acceptUpload():
             flight_details['pilot_name'] = metadata['pilotName']
             flight_details['cloudiness'] = metadata['cloudiness']
             flight_details['comments'] = metadata['comments']
+            flight_details['research_station'] = \
+                config['research_station_mapping'][metadata['research_station']]
             flight_details[
                 'display_name'] = f"{flight_details['mission_start_time']}" \
                                   f"-{flight_details['cloudiness']}-" \
