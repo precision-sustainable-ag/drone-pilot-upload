@@ -149,7 +149,8 @@ def calcBands(flight_id, files):
     return num_bands
 
 
-def createFolderStructure(flight_id, files, check_radiance_panels=False):
+def createFolderStructure(flight_id, research_station, files,
+                          check_radiance_panels=False):
     """
     creates the folder structure for flight data storage
     :param flight_id: unique identifier for the flight
@@ -165,7 +166,8 @@ def createFolderStructure(flight_id, files, check_radiance_panels=False):
         'service': 'create folder structure',
         'message': 'processing started'
     })
-    parent_folder = os.path.join(config['flight_data_folder'], flight_id)
+    parent_folder = os.path.join(config['flight_data_folder'],
+                                 research_station, 'flights', flight_id)
 
     # create the required folders for storing the images and misc files
     if not os.path.exists(parent_folder):
@@ -371,7 +373,8 @@ def getExifInfo(flight_details):
             crs="EPSG:4326"
         )
         flight_details['flight_polygon'] = {"type": "GeometryCollection",
-                                            "geometries": [json.loads(x) for x in
+                                            "geometries": [json.loads(x) for x
+                                                           in
                                                            shapely.to_geojson(
                                                                geo_df[
                                                                    'geometry'].tolist())]}

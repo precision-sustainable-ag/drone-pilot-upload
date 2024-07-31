@@ -1,6 +1,7 @@
 config = {
     # 'flight_data_folder': '/data/transfer/',
-    'flight_data_folder': '/Users/jbshah/_p/test/backend_storage/flights/',
+    # 'flight_data_folder': '/Users/jbshah/_p/test/backend_storage/flights/',
+    'flight_data_folder': '/Users/jbshah/_p/test/backend_storage_v2/',
     #  TODO: review usage of this field
     'sensor_information': {
         'Altum-PT': {
