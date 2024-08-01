@@ -1,3 +1,4 @@
+
 config = {
     # 'flight_data_folder': '/data/transfer/',
     # 'flight_data_folder': '/Users/jbshah/_p/test/backend_storage/flights/',
@@ -29,7 +30,7 @@ config = {
         "Horticultural Crops Research Station - Clinton": "clinton",
         "Lower Coastal Plain / Cunningham Research Station": "cunningham",
         "Mountain Research Station": "mountain",
-        "Mountain Horticultural Crops Research and Extension Center": "mountainext",
+        "Mountain Horticultural Crops Research and Extension Center": "mountainhort",
         "Oxford Tobacco Research Station": "oxford",
         "Peanut Belt Research Station": "peanut",
         "Piedmont Research Station": "piedmont",
