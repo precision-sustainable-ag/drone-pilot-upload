@@ -1,11 +1,11 @@
 #! /usr/local/apps/miniconda20230420/bin/python3
 import glob  # use module to count files given an extension
-import \
-    subprocess  # to execute linux command better than os.sys because executed command is returned
+import subprocess  # to execute linux command better than os.sys because executed command is returned
 import json  # use to parse the json.log file in ../code/json.log
 import os
 import sys
 import utils
+from config import config
 
 # Algorithm
 # 1- get flight information from database
@@ -187,7 +187,8 @@ def main(flight_dir, flight_id):
         lsfscript = generateLsfScript(flight_dir, flight_id)
         # submit job to lsf scheduler and get the job ID
         subprocess.run(
-            ['python3 ./utils.py', flight_dir, flight_id, 'processing'])
+            ['./venv/bin/python3', './ortho_processing/utils.py',
+             flight_dir, flight_id, 'processing'], cwd=config['code_dir'])
         jobID = int(submitJob(lsfscript))
         print(f' Job has been submitted to the Hazel HPC with ID {jobID}\n')
     # Monitor job
@@ -200,7 +201,8 @@ def main(flight_dir, flight_id):
     if status == "EXIT":
         print(f"Job with id {jobID} did not complete successfully")
         subprocess.run(
-            ['python3 ./utils.py', flight_dir, flight_id, 'failed'])
+            ['./venv/bin/python3', './ortho_processing/utils.py',
+             flight_dir, flight_id, 'failed'], cwd=config['code_dir'])
     else:
         codePath = flight_dir + "/code"
         files = [f for f in os.listdir(codePath) if
@@ -213,8 +215,11 @@ def main(flight_dir, flight_id):
                 print(
                     f"{jobID} completed at {jobEndTime} running for {jobTotalTime} secs")
                 subprocess.run(
-                    ['python3 ./utils.py', flight_dir, flight_id,
-                     'processed' if processingStatus else 'failed'])
+                    ['./venv/bin/python3', './ortho_processing/utils.py',
+                     flight_dir,
+                     flight_id,
+                     'processed' if processingStatus else 'failed'],
+                    cwd=config['code_dir'])
     return None
 
 
