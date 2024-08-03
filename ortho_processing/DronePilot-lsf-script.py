@@ -75,8 +75,10 @@ singularity run --bind $output_dir/code/images,$tmp_dir --writable-tmpfs --nv %s
 # using the image extension
 def countFilesOIT(path):
     print(f'\n Counting images in the OIT storage')
-    return len([f for f in os.listdir(path) if os.path.isfile(os.path.join(
-        path, f))])
+    file_count = 0
+    for root, dirs, files in os.walk(path):
+        file_count += len(files)
+    return file_count
     # try:
     #     countImages = len(glob.glob1(path, "*.%s" % imgExt))
     #     print(f' \n Counted {countImages} images \n')
@@ -99,31 +101,33 @@ def submitJob(lsfscript):
 
 
 def monitoreJob(jobID):
-    statusList = ["RUN", "PEND"]
-    status = "RUN"
-    print(f"\n Job with id {jobID} is being monitored \n")
-    try:
-        while status in statusList:
+    if jobID:
+        statusList = ["RUN", "PEND"]
+        status = "RUN"
+        print(f"\n Job with id {jobID} is being monitored \n")
+        try:
+            while status in statusList:
+                result = subprocess.run(["bjobs -r %d " % (jobID)], shell=True,
+                                        capture_output=True, text=True)
+                if len(result.stdout.split()) > 10:
+                    status = result.stdout.split()[10]
+                    if status == "RUN":
+                        # print("Job %d is  running"%jobID)
+                        pass
+                    elif status == "PEND":
+                        print(f"Job {jobID} is pending. Status {status}\n")
+                    else:
+                        pass
             result = subprocess.run(["bjobs -r %d " % (jobID)], shell=True,
                                     capture_output=True, text=True)
-            if len(result.stdout.split()) > 10:
-                status = result.stdout.split()[10]
-                if status == "RUN":
-                    # print("Job %d is  running"%jobID)
-                    pass
-                elif status == "PEND":
-                    print(f"Job {jobID} is pending. Status {status}\n")
-                else:
-                    pass
-        result = subprocess.run(["bjobs -r %d " % (jobID)], shell=True,
-                                capture_output=True, text=True)
-        if len(result.stdout.split()) < 10:
-            print(f"Job {jobID} is no longer running, Status: {status}")
-        else:
-            print(f"Job {jobID} is no longer running, Status: {status}")
-    except Exception as e:
-        print('except ', e)
-    return status
+            if len(result.stdout.split()) < 10:
+                print(f"Job {jobID} is no longer running, Status: {status}")
+            else:
+                print(f"Job {jobID} is no longer running, Status: {status}")
+        except Exception as e:
+            print('except ', e)
+        return status
+    return None
 
 
 ## Generate lsf submission script
@@ -179,8 +183,8 @@ def main(flight_dir, flight_id):
     # count images in the flight folder on OIT storage
     imgExt = 'tif'
     # path = IMAGEDIR
-    path = os.path.join(flight_dir, 'images')
-    oitFileCount = countFilesOIT(path)
+    # path = os.path.join(flight_dir, 'images')
+    oitFileCount = countFilesOIT(flight_dir)
     if dbFileCount == oitFileCount:
         # Generate LSF submission files
         # lsfscript = generateLsfScript(FLIGHT_ID)
@@ -191,6 +195,8 @@ def main(flight_dir, flight_id):
              flight_dir, flight_id, 'processing'], cwd=config['code_dir'])
         jobID = int(submitJob(lsfscript))
         print(f' Job has been submitted to the Hazel HPC with ID {jobID}\n')
+    else:
+        jobID = None
     # Monitor job
     status = ""
     status = monitoreJob(jobID)
