@@ -8,5 +8,6 @@ config = {
         'collection': 'flight-information'
     },
     'flights_dir': '/rs1/shares/cals-research-station/sandhills/transfer'
-                   '/flights/'
+                   '/flights/',
+    'code_dir': '/rs1/shares/cals-research-station/sandhills/transfer/benchmark/HPC/testcron/'
 }

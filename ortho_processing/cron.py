@@ -16,11 +16,11 @@ from config import config
 def trigger(flight_id):
     try:
         flight_dir = os.path.join(config['flights_dir'], flight_id)
-        # results = subprocess.run(['./generate_ortho.sh', flight_dir, flight_id])
-        results = subprocess.run(['python3 ./DronePilot-lsf-script.py',
+        results = subprocess.run(['./venv/bin/python3',
+                                  './ortho_processing/DronePilot-lsf-script.py',
                                   flight_dir,
-                                  flight_id])
-        # print(flight_dir)
+                                  flight_id], cwd=config['code_dir'])
+        print(flight_dir)
     except Exception as e:
         print('except ', e)
 
