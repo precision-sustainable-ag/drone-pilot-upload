@@ -1,5 +1,6 @@
 #! /usr/local/apps/miniconda20230420/bin/python3
 import glob  # use module to count files given an extension
+import shutil
 import subprocess  # to execute linux command better than os.sys because executed command is returned
 import json  # use to parse the json.log file in ../code/json.log
 import os
@@ -38,6 +39,7 @@ jobID = ""  # Initialize job id after submission
 JOB_RUNTIME_1 = "25:00"  # 25 hours and zero minutes
 # JOB_NAME_23 = FLIGHT_ID
 SCRATCH_DIR_4 = "/share/hpc-support/jfossot/tmp"
+# SCRATCH_DIR_4 = "/share/psi/jbshah/tmp"
 
 ##RELATIVE_OUTPUTDIR="benchmark/HPC/testcron"
 # RELATIVE_OUTPUTDIR = FLIGHT_ID
@@ -66,6 +68,7 @@ mkdir -p $output_dir/code/images
 cp $images_dir/* $output_dir/code/images
 # specify --nv to invoke NVidia cuda library inside the container
 # more here https://github.com/sylabs/singularity-userdocs/blob/main/gpu.rst
+cd $output_dir
 singularity run --bind $output_dir/code/images,$tmp_dir --writable-tmpfs --nv %s \
 --feature-quality ultra --min-num-features 50000 --project-path $output_dir --dsm --dtm
 '''
@@ -133,18 +136,39 @@ def monitoreJob(jobID):
 ## Generate lsf submission script
 #
 def generateLsfScript(flight_dir, flight_id):
+    lsfScriptName = "%s-lsf.sh" % flight_id
+    lsfScriptAbsolutePath = os.path.join(flight_dir, lsfScriptName)
     try:
-        lsfScriptName = "%s-lsf.sh" % flight_id
-        f = open(lsfScriptName, "w")
+        f = open(lsfScriptAbsolutePath, "w")
         f.write(lsfTemplate % (
             JOB_RUNTIME_1, flight_id, flight_id, SCRATCH_DIR_4,
             flight_dir,
             os.path.join(flight_dir, 'images'), PATH_2_SIF_7))
         f.close()
-        print(f' LSF submission script written in file {lsfScriptName} \n')
+        print(f' LSF submission script written in file {lsfScriptAbsolutePath}')
     except Exception as e:
         print('except ', e)
-    return lsfScriptName
+    return lsfScriptAbsolutePath
+
+
+def generateLsfOrthoIntel(ortho_file, flight_dir, flight_id):
+    lsfPath = os.path.join(flight_dir, f'{flight_id}_ortho_intel.sh')
+    with open(lsfPath, 'w') as file:
+        file.write(f"""#!/bin/bash
+#BSUB -n 16
+## requested job run time
+#BSUB -W 5:00
+#BSUB -q sif
+#BSUB -R "select[avx2]"
+## Tag general output file and std error output
+#BSUB -o out-{flight_id}.ortho_intel
+#BSUB -e err-{flight_id}.ortho_intel
+export tmp_dir={SCRATCH_DIR_4}
+export flight_dir={flight_dir}
+export ortho_file={ortho_file}
+cd $flight_dir
+singularity run --bind $flight_dir,$tmp_dir --writable-tmpfs {os.path.join(SOFTWARE_DIR, 'drone_ortho_intel.sif')} $ortho_file $flight_dir""")
+    return lsfPath
 
 
 # How do you determine the job is completed? lsf bjobs?
@@ -187,7 +211,6 @@ def main(flight_dir, flight_id):
     oitFileCount = countFilesOIT(flight_dir)
     if dbFileCount == oitFileCount:
         # Generate LSF submission files
-        # lsfscript = generateLsfScript(FLIGHT_ID)
         lsfscript = generateLsfScript(flight_dir, flight_id)
         # submit job to lsf scheduler and get the job ID
         subprocess.run(
@@ -198,7 +221,6 @@ def main(flight_dir, flight_id):
     else:
         jobID = None
     # Monitor job
-    status = ""
     status = monitoreJob(jobID)
     # check to see if job has completed successfuly or if it has failed
     # if job is successful then the log.json exist if not it doesn't
@@ -211,21 +233,56 @@ def main(flight_dir, flight_id):
              flight_dir, flight_id, 'failed'], cwd=config['code_dir'])
     else:
         codePath = flight_dir + "/code"
-        files = [f for f in os.listdir(codePath) if
-                 os.path.isfile(os.path.join(codePath, f))]
-        for f in files:
-            if f == "log.json":
-                processingStatus = parseJsonLogFile("success", flight_dir)
-                jobEndTime = parseJsonLogFile("endTime", flight_dir)
-                jobTotalTime = parseJsonLogFile("totalTime", flight_dir)
-                print(
-                    f"{jobID} completed at {jobEndTime} running for {jobTotalTime} secs")
+        if os.path.exists(os.path.join(codePath, 'log.json')):
+            processingStatus = parseJsonLogFile("success", flight_dir)
+            jobEndTime = parseJsonLogFile("endTime", flight_dir)
+            jobTotalTime = parseJsonLogFile("totalTime", flight_dir)
+            print(
+                f"{jobID} completed at {jobEndTime} running for {jobTotalTime} secs")
+            if processingStatus:
+                # move contents from code folder back to flight directory,
+                # delete copy of images created in code folder
+                for item in os.listdir(codePath):
+                    item_path = os.path.join(codePath, item)
+                    if item != 'images':
+                        dest_path = os.path.join(flight_dir, item)
+                        os.rename(item_path, dest_path)
+                shutil.rmtree(codePath)
                 subprocess.run(
                     ['./venv/bin/python3', './ortho_processing/utils.py',
-                     flight_dir,
-                     flight_id,
-                     'processed' if processingStatus else 'failed'],
+                     flight_dir, flight_id, 'ortho generated'],
                     cwd=config['code_dir'])
+
+                print('getting intelligence')
+                # run ortho intelligence code to get data products
+                ortho_file = os.path.join(flight_dir, 'odm_orthophoto',
+                                          'odm_orthophoto.tif')
+                orthoIntelLsf = generateLsfOrthoIntel(ortho_file, flight_dir,
+                                                      flight_id)
+                jobID = int(submitJob(orthoIntelLsf))
+                print(f' Job has been submitted to the Hazel HPC with ID {jobID}')
+                status = monitoreJob(jobID)
+                if status == "EXIT":
+                    print(f"Job with id {jobID} did not complete successfully")
+                    subprocess.run(
+                        ['./venv/bin/python3', './ortho_processing/utils.py',
+                         flight_dir, flight_id, 'failed'],
+                        cwd=config['code_dir'])
+                else:
+                    subprocess.run(
+                        ['./venv/bin/python3', './ortho_processing/utils.py',
+                         flight_dir, flight_id, 'processed'],
+                        cwd=config['code_dir'])
+            else:
+                subprocess.run(
+                    ['./venv/bin/python3', './ortho_processing/utils.py',
+                     flight_dir, flight_id, 'failed'],
+                    cwd=config['code_dir'])
+        else:
+            subprocess.run(
+                ['./venv/bin/python3', './ortho_processing/utils.py',
+                 flight_dir, flight_id, 'failed'],
+                cwd=config['code_dir'])
     return None
 
 

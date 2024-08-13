@@ -55,10 +55,17 @@ def update_ortho(flight_dir, flight_id, status):
 
             client, db_collection = connectDb()
             db_collection.update_one(query, update, upsert=True)
-        elif status == 'processing':
+        # elif status == 'processing':
+        #     query = {'flight_id': flight_id}
+        #     update = {"$set": {
+        #         "status": "processing"
+        #     }}
+        #     client, db_collection = connectDb()
+        #     db_collection.update_one(query, update, upsert=True)
+        else:
             query = {'flight_id': flight_id}
             update = {"$set": {
-                "status": "processing"
+                "status": status
             }}
             client, db_collection = connectDb()
             db_collection.update_one(query, update, upsert=True)

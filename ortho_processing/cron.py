@@ -42,7 +42,7 @@ def main():
         # print(row)
         if 'status' not in row.keys():
             records_to_process.append(row['flight_id'])
-        elif row['status'] not in ['processed', 'processing']:
+        elif row['status'] not in ['processed', 'processing', 'failed']:
             records_to_process.append(row['flight_id'])
 
     num_workers = multiprocessing.cpu_count()
