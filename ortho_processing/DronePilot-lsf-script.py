@@ -30,6 +30,7 @@ from config import config
 # FLIGHT_ID = "93238409-1871-4b81-bd25-cf0c26f50c9c"  # this is a unique identifier
 # ROOT_DIR = "/rs1/shares/cals-research-station/sandhills/transfer/"
 SOFTWARE_DIR = "/rs1/shares/cals-research-station/sandhills/software"
+PYTHON_EXEC = os.path.join(config['code_dir'], 'venv', 'bin', 'python3')
 # IMAGEDIR = ROOT_DIR + FLIGHT_ID + "/images"
 # RELATIVE_IMAGEDIR="benchmark/0004SET/images"      # this is relative to the root directory
 jobID = ""  # Initialize job id after submission
@@ -216,7 +217,7 @@ def main(flight_dir, flight_id):
         lsfscript = generateLsfScript(flight_dir, flight_id)
         # submit job to lsf scheduler and get the job ID
         subprocess.run(
-            ['./venv/bin/python3', './ortho_processing/utils.py',
+            [PYTHON_EXEC, './drone-pilot-upload/ortho_processing/utils.py',
              flight_dir, flight_id, 'processing'], cwd=config['code_dir'])
         print('lsfscript', lsfscript)
         jobID = int(submitJob(lsfscript, flight_dir))
@@ -232,7 +233,7 @@ def main(flight_dir, flight_id):
     if status == "EXIT":
         print(f"Job with id {jobID} did not complete successfully")
         subprocess.run(
-            ['./venv/bin/python3', './ortho_processing/utils.py',
+            [PYTHON_EXEC, './drone-pilot-upload/ortho_processing/utils.py',
              flight_dir, flight_id, 'failed'], cwd=config['code_dir'])
     else:
         codePath = flight_dir + "/code"
@@ -252,7 +253,8 @@ def main(flight_dir, flight_id):
                         os.rename(item_path, dest_path)
                 shutil.rmtree(codePath)
                 subprocess.run(
-                    ['./venv/bin/python3', './ortho_processing/utils.py',
+                    [PYTHON_EXEC,
+                     './drone-pilot-upload/ortho_processing/utils.py',
                      flight_dir, flight_id, 'ortho generated'],
                     cwd=config['code_dir'])
 
@@ -262,28 +264,32 @@ def main(flight_dir, flight_id):
                                           'odm_orthophoto.tif')
                 orthoIntelLsf = generateLsfOrthoIntel(ortho_file, flight_dir,
                                                       flight_id)
-                jobID = int(submitJob(orthoIntelLsf))
-                print(f' Job has been submitted to the Hazel HPC with ID {jobID}')
+                jobID = int(submitJob(orthoIntelLsf, flight_dir))
+                print(
+                    f' Job has been submitted to the Hazel HPC with ID {jobID}')
                 status = monitorJob(jobID)
                 if status == "EXIT":
                     print(f"Job with id {jobID} did not complete successfully")
                     subprocess.run(
-                        ['./venv/bin/python3', './ortho_processing/utils.py',
+                        [PYTHON_EXEC,
+                         './drone-pilot-upload/ortho_processing/utils.py',
                          flight_dir, flight_id, 'failed'],
                         cwd=config['code_dir'])
                 else:
                     subprocess.run(
-                        ['./venv/bin/python3', './ortho_processing/utils.py',
+                        [PYTHON_EXEC,
+                         './drone-pilot-upload/ortho_processing/utils.py',
                          flight_dir, flight_id, 'processed'],
                         cwd=config['code_dir'])
             else:
                 subprocess.run(
-                    ['./venv/bin/python3', './ortho_processing/utils.py',
+                    [PYTHON_EXEC,
+                     './drone-pilot-upload/ortho_processing/utils.py',
                      flight_dir, flight_id, 'failed'],
                     cwd=config['code_dir'])
         else:
             subprocess.run(
-                ['./venv/bin/python3', './ortho_processing/utils.py',
+                [PYTHON_EXEC, './drone-pilot-upload/ortho_processing/utils.py',
                  flight_dir, flight_id, 'failed'],
                 cwd=config['code_dir'])
     return None

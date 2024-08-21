@@ -9,5 +9,5 @@ config = {
     # },
     'flights_dir': '/rs1/shares/cals-research-station/sandhills/transfer'
                    '/flights/',
-    'code_dir': '/rs1/shares/cals-research-station/virtual/software/app1_5/drone-pilot-upload/'
+    'code_dir': '/rs1/shares/cals-research-station/virtual/software/app1_5/'
 }

@@ -15,9 +15,10 @@ from config import config
 # add multiprocessing/multithreading when triggering
 def trigger(flight_id):
     try:
+        python_env = os.path.join(config['code_dir'], 'venv', 'bin', 'python3')
         flight_dir = os.path.join(config['flights_dir'], flight_id)
-        results = subprocess.run(['./venv/bin/python3',
-                                  './ortho_processing/DronePilot-lsf-script.py',
+        results = subprocess.run([python_env,
+                                  './drone-pilot-upload/ortho_processing/DronePilot-lsf-script.py',
                                   flight_dir,
                                   flight_id], cwd=config['code_dir'])
         print(flight_dir)
@@ -42,7 +43,8 @@ def main():
         # print(row)
         if 'status' not in row.keys():
             records_to_process.append(row['flight_id'])
-        elif row['status'] not in ['processed', 'processing', 'failed']:
+        elif row['status'] not in ['processed', 'processing', 'failed',
+                                   'ortho generated']:
             records_to_process.append(row['flight_id'])
     if len(records_to_process) > 0:
         num_workers = multiprocessing.cpu_count()
