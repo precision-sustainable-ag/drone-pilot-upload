@@ -44,11 +44,13 @@ def main():
             records_to_process.append(row['flight_id'])
         elif row['status'] not in ['processed', 'processing', 'failed']:
             records_to_process.append(row['flight_id'])
-
-    num_workers = multiprocessing.cpu_count()
-    with concurrent.futures.ThreadPoolExecutor(
-            max_workers=num_workers) as executor:
-        executor.map(trigger, records_to_process)
+    if len(records_to_process) > 0:
+        num_workers = multiprocessing.cpu_count()
+        with concurrent.futures.ThreadPoolExecutor(
+                max_workers=num_workers) as executor:
+            executor.map(trigger, records_to_process)
+    else:
+        print('no records to process')
 
 
 if __name__ == '__main__':

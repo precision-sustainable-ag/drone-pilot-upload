@@ -91,19 +91,21 @@ def countFilesOIT(path):
 
 
 ## function to submit lsf job on Hazel cluster
-def submitJob(lsfscript):
+def submitJob(lsfscript, flight_dir):
     # use python subprocess to execute linux command and collect the output
     # returned as A CLASS object formated as string
     try:
         result = subprocess.run(["bsub < %s" % (lsfscript)], shell=True,
-                                capture_output=True, text=True)
+                                capture_output=True, text=True, cwd=flight_dir)
+        # print('error', result.stderr)
+        # print('out', result.stdout)
         jobid = result.stdout.split('>')[0].split('<')[1]
     except Exception as e:
         print('except ', e)
     return jobid
 
 
-def monitoreJob(jobID):
+def monitorJob(jobID):
     if jobID:
         statusList = ["RUN", "PEND"]
         status = "RUN"
@@ -216,12 +218,13 @@ def main(flight_dir, flight_id):
         subprocess.run(
             ['./venv/bin/python3', './ortho_processing/utils.py',
              flight_dir, flight_id, 'processing'], cwd=config['code_dir'])
-        jobID = int(submitJob(lsfscript))
+        print('lsfscript', lsfscript)
+        jobID = int(submitJob(lsfscript, flight_dir))
         print(f' Job has been submitted to the Hazel HPC with ID {jobID}\n')
     else:
         jobID = None
     # Monitor job
-    status = monitoreJob(jobID)
+    status = monitorJob(jobID)
     # check to see if job has completed successfuly or if it has failed
     # if job is successful then the log.json exist if not it doesn't
     # Verify that log.json exist
@@ -261,7 +264,7 @@ def main(flight_dir, flight_id):
                                                       flight_id)
                 jobID = int(submitJob(orthoIntelLsf))
                 print(f' Job has been submitted to the Hazel HPC with ID {jobID}')
-                status = monitoreJob(jobID)
+                status = monitorJob(jobID)
                 if status == "EXIT":
                     print(f"Job with id {jobID} did not complete successfully")
                     subprocess.run(
