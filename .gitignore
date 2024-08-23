@@ -32,3 +32,4 @@ backend/flights/
 backend/.ipynb_checkpoints/
 */*.ipynb
 backend/logs/*
+ortho_processing/drone_ortho_intel.tar
