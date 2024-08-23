@@ -1,13 +1,14 @@
 import os
 import sys
+import subprocess
 import numpy as np
 import rasterio
+
 
 def generateVegIndices(ortho_file, flight_dir):
     index_folder = os.path.join(flight_dir, 'veg_indices')
     if not os.path.exists(index_folder):
         os.makedirs(index_folder)
-
     rasterio_dataset = rasterio.open(ortho_file)
     band_mapping = {}
     for band, name in zip(rasterio_dataset.indexes,
@@ -45,41 +46,49 @@ def generateVegIndices(ortho_file, flight_dir):
                            **profile) as op:
             op.write(lai.astype(rasterio.float64), 1)
     else:
-        red_band = rasterio_dataset.read(band_mapping['red']).astype('float64')
-        green_band = rasterio_dataset.read(band_mapping['green']).astype('float64')
-        blue_band = rasterio_dataset.read(band_mapping['blue']).astype('float64')
+        try:
+            red_band = rasterio_dataset.read(band_mapping['red']).astype(
+                'float64')
+            green_band = rasterio_dataset.read(band_mapping['green']).astype(
+                'float64')
+            blue_band = rasterio_dataset.read(band_mapping['blue']).astype(
+                'float64')
 
-        vari = np.where((green_band + red_band - blue_band) == 0, np.nan,
-                        (green_band - red_band) / (
-                                green_band + red_band - blue_band))
+            vari = np.where((green_band + red_band - blue_band) == 0, np.nan,
+                            (green_band - red_band) / (
+                                    green_band + red_band - blue_band))
 
-        vari[np.isnan(vari)] = np.nan
+            vari[np.isnan(vari)] = np.nan
+            gli = np.where((2 * green_band + red_band + blue_band) == 0, np.nan,
+                           (2 * green_band - red_band - blue_band) / (
+                                   2 * green_band + red_band + blue_band))
 
-        gli = np.where((2 * green_band + red_band + blue_band) == 0, np.nan,
-                       (2 * green_band - red_band - blue_band) / (
-                               2 * green_band + red_band + blue_band))
+            # Set any potential division by zero or NaN values to NaN
+            gli[np.isnan(gli)] = np.nan
+            # Metadata for the new NDVI raster
+            profile = rasterio_dataset.profile
+            profile.update(
+                dtype=rasterio.float64,
+                count=1
+            )
 
-        # Set any potential division by zero or NaN values to NaN
-        gli[np.isnan(gli)] = np.nan
-
-        # Metadata for the new NDVI raster
-        profile = rasterio_dataset.profile
-        profile.update(
-            dtype=rasterio.float64,
-            count=1
-        )
-
-        # Write the NDVI raster to a new GeoTIFF file
-        with rasterio.open(os.path.join(index_folder, 'vari_image.tif'), 'w',
-                           **profile) as op:
-            op.write(vari.astype(rasterio.float64), 1)
-        with rasterio.open(os.path.join(index_folder, 'gli_image.tif'), 'w',
-                           **profile) as op:
-            op.write(gli.astype(rasterio.float64), 1)
+            # Write the NDVI raster to a new GeoTIFF file
+            with rasterio.open(os.path.join(index_folder, 'vari_image.tif'),
+                               'w',
+                               **profile) as op:
+                op.write(vari.astype(rasterio.float64), 1)
+            with rasterio.open(os.path.join(index_folder, 'gli_image.tif'), 'w',
+                               **profile) as op:
+                op.write(gli.astype(rasterio.float64), 1)
+        except Exception as e:
+            print(e)
 
 
 if __name__ == '__main__':
     ortho_file = sys.argv[1]
     flight_dir = sys.argv[2]
 
-    generateVegIndices(ortho_file, flight_dir)
+    cog_file = os.path.join(os.path.split(ortho_file)[0],
+                            'odm_orthophoto_cog.tif')
+    subprocess.run(['rio', 'cogeo', 'create', ortho_file, cog_file])
+    generateVegIndices(cog_file, flight_dir)
