@@ -126,7 +126,7 @@ const FolderUpload = () => {
           marginTop: '10%',
         }}
       >
-        <Typography variant='h6'> Selected Folders </Typography>
+        <Typography variant='h6'> Selected Folder(s) </Typography>
         <List dense={true}>
           {selectedFolders.map((folder, index) => (
             <ListItem key={index}
@@ -197,7 +197,7 @@ const FolderUpload = () => {
           >
             <Grid item xs={12} sm={12} md={12} lg={12}>
               <Typography variant="h4" gutterBottom align="center">
-                Drone pilot - Folder Upload Page
+                Drone Imagery Folder(s) Upload Page
               </Typography>
             </Grid>
 
@@ -268,7 +268,7 @@ const FolderUpload = () => {
                 onClick={handleUpload}
                 disabled={(selectedFolders.length === 0) || (pilotNameRef.current.value === '') || (cloudinessRef.current.value === '') || (loading)}
               >
-                {loading ? <CircularProgress size={24} color="inherit" /> : 'Upload Folder'}
+                {loading ? <CircularProgress size={24} color="inherit" /> : 'Upload Folder(s)'}
               </Button>
             </Grid>
           </Grid>
