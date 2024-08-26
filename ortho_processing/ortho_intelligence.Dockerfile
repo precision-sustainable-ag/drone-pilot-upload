@@ -35,6 +35,7 @@ RUN apt-get update \
 
 # Install Rasterio and any other Python dependencies
 RUN pip install rasterio
+RUN pip install rio-cogeo
 
 # RUN pip3 install rasterio numpy
 
