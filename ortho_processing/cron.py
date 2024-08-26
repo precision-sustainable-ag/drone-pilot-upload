@@ -15,9 +15,13 @@ from config import config
 # add multiprocessing/multithreading when triggering
 def trigger(flight_id):
     try:
+        python_env = os.path.join(config['code_dir'], 'venv', 'bin', 'python3')
         flight_dir = os.path.join(config['flights_dir'], flight_id)
-        results = subprocess.run(['./generate_ortho.sh', flight_dir, flight_id])
-        # print(flight_dir)
+        results = subprocess.run([python_env,
+                                  './drone-pilot-upload/ortho_processing/DronePilot-lsf-script.py',
+                                  flight_dir,
+                                  flight_id], cwd=config['code_dir'])
+        print(flight_dir)
     except Exception as e:
         print('except ', e)
 
@@ -39,13 +43,16 @@ def main():
         # print(row)
         if 'status' not in row.keys():
             records_to_process.append(row['flight_id'])
-        elif row['status'] not in ['processed', 'processing']:
+        elif row['status'] not in ['processed', 'processing', 'failed',
+                                   'ortho generated']:
             records_to_process.append(row['flight_id'])
-
-    num_workers = multiprocessing.cpu_count()
-    with concurrent.futures.ThreadPoolExecutor(
-            max_workers=num_workers) as executor:
-        executor.map(trigger, records_to_process)
+    if len(records_to_process) > 0:
+        num_workers = multiprocessing.cpu_count()
+        with concurrent.futures.ThreadPoolExecutor(
+                max_workers=num_workers) as executor:
+            executor.map(trigger, records_to_process)
+    else:
+        print('no records to process')
 
 
 if __name__ == '__main__':
