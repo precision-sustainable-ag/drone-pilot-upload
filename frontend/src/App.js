@@ -77,9 +77,9 @@ const FolderUpload = () => {
           'Content-Type': 'multipart/form-data',
         },
       });
-      alert('Folder uploaded successfully.');
+      alert(`${selectedFolders.length} folder(s) were uploaded successfully.`);
     } catch (error) {
-      alert('Could not upload folder. Please try again');
+      alert(`${selectedFolders.length} folder(s) not uploaded. Please try again.`);
     } finally {
       // finally reset all states and refernces (clearing the form)
       setLoading(false);
@@ -136,7 +136,7 @@ const FolderUpload = () => {
               </IconButton>
             }>
               <ListItemText
-                primary={`Folder ${index + 1}`}
+                primary={folder[0].webkitRelativePath.substring(0, folder[0].webkitRelativePath.indexOf('/'))}
                 secondary={`${folder.length - 1} file(s)`}
               />
             </ListItem>
@@ -200,27 +200,19 @@ const FolderUpload = () => {
                 Drone pilot - Folder Upload Page
               </Typography>
             </Grid>
-            
-            <Grid item xs={12} sm={12} md={12} lg={12}>
-              <label htmlFor="file-input" style={{border: '2px dashed #ccc', 
+
+            <Grid item xs={6} sm={6} md={6} lg={6} container spacing={2}>
+            <Grid item xs={8} sm={8} md={8} lg={8}>
+              <label style={{border: '2px dashed #ccc', 
               borderRadius: '4px', 
               padding: '2px', 
               textAlign: 'center', 
-              cursor: 'pointer',
               display: 'grid',
-              minHeight: '100px',
+              minHeight: '50px',
               justifyContent: 'center',
               alignItems: 'center'}}
               fullWidth>
-                {selectedFolders.length === 0 ? (
-                  <>
-                    Drag and drop your folder here or click to select a folder.
-                  </>
-                ) : (
-                  <>
-                    {selectedFolders.length} folder(s) selected.
-                  </>
-                )}
+                {selectedFolders.length} folder(s) selected. <br/> Total {selectedFolders.reduce((total, folder) => {return total + folder.length - 1}, 0)} file(s) selected.
               </label>
               <input
                 type="file"
@@ -233,17 +225,21 @@ const FolderUpload = () => {
                 ref={fileInputRef}
               />
             </Grid>
-            <Grid item xs={12} sm={12} md={12} lg={12}>
+            <Grid item xs={4} sm={4} md={4} lg={4}>
               <Button
+                  style={{minHeight: '50px',}}
                   fullWidth
                   variant="contained"
                   onClick={() => setIsSelectedFoldersModalVisible(true)}
                   disabled={loading}
                 >
-                  Add or update selection
+                  Add or update folder(s)
                 </Button>
               {selectedFoldersModal}
             </Grid>
+            </Grid>
+            {/* Placeholder grid container */}
+            <Grid item xs={6} sm={6} md={6} lg={6}></Grid> 
             <Grid item xs={6} sm={6} md={6} lg={6}>
               <TextField required 
               fullWidth type="text" name="pilotName" 
