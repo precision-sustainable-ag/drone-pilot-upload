@@ -201,8 +201,8 @@ const FolderUpload = () => {
               </Typography>
             </Grid>
 
-            <Grid item xs={6} sm={6} md={6} lg={6} container spacing={2}>
-            <Grid item xs={8} sm={8} md={8} lg={8}>
+            <Grid item xs={6} sm={6} md={6} lg={6} container spacing={2} alignItems="stretch">
+            <Grid item xs={8} sm={8} md={8} lg={8} style={{ display: 'flex' }}>
               <label style={{border: '2px dashed #ccc', 
               borderRadius: '4px', 
               padding: '2px', 
@@ -210,8 +210,8 @@ const FolderUpload = () => {
               display: 'grid',
               minHeight: '50px',
               justifyContent: 'center',
-              alignItems: 'center'}}
-              fullWidth>
+              alignItems: 'center',
+              flex: 1}}>
                 {selectedFolders.length} folder(s) selected. <br/> Total {selectedFolders.reduce((total, folder) => {return total + folder.length - 1}, 0)} file(s) selected.
               </label>
               <input
@@ -225,9 +225,9 @@ const FolderUpload = () => {
                 ref={fileInputRef}
               />
             </Grid>
-            <Grid item xs={4} sm={4} md={4} lg={4}>
+            <Grid item xs={4} sm={4} md={4} lg={4} style={{ display: 'flex' }}>
               <Button
-                  style={{minHeight: '50px',}}
+                  style={{flex: 1}}
                   fullWidth
                   variant="contained"
                   onClick={() => setIsSelectedFoldersModalVisible(true)}
