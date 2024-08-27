@@ -1,19 +1,23 @@
 // FolderUpload.js
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
-import { Grid, Box, Typography, Button, FormControl, TextField, CircularProgress } from '@mui/material';
+import { Grid, Box, Typography, Button, FormControl, TextField, CircularProgress, Modal, List, ListItem, ListItemText, IconButton } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const FolderUpload = () => {
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectedFolders, setSelectedFolders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     'pilotName': '',
     'weatherConditions': '',
     'comments': ''
   });
+  const [isSelectedFoldersModalVisible, setIsSelectedFoldersModalVisible] = useState(false);
+
   const pilotNameRef = useRef();
   const cloudinessRef = useRef();
   const commentsRef = useRef();
+  const fileInputRef = useRef();
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -35,7 +39,7 @@ const FolderUpload = () => {
       }
       
       if (imageFlag) {
-        setSelectedFiles(files);
+        setSelectedFolders(prevSelectedFolders => [...prevSelectedFolders, files]);
       }
     }
     
@@ -53,8 +57,10 @@ const FolderUpload = () => {
     const formDataToSend = new FormData();
 
     // Append each selected file to the FormData object.
-    selectedFiles.forEach((file) => {
-      formDataToSend.append('files', file);
+    selectedFolders.forEach((folder) => {
+      folder.forEach((file) => {
+        formDataToSend.append('files', file);
+      });
     });
     const metadataJson = {
       'pilotName': formData.pilotName,
@@ -71,9 +77,9 @@ const FolderUpload = () => {
           'Content-Type': 'multipart/form-data',
         },
       });
-      alert('Folder uploaded successfully.');
+      alert(`${selectedFolders.length} folder(s) were uploaded successfully.`);
     } catch (error) {
-      alert('Could not upload folder. Please try again');
+      alert(`${selectedFolders.length} folder(s) not uploaded. Please try again.`);
     } finally {
       // finally reset all states and refernces (clearing the form)
       setLoading(false);
@@ -82,7 +88,7 @@ const FolderUpload = () => {
         'weatherConditions': '',
         'comments': ''
       });
-      setSelectedFiles((prevSelectedFiles) => {
+      setSelectedFolders((prevSelectedFiles) => {
         return [];
       });
       if (pilotNameRef.current) {
@@ -96,6 +102,65 @@ const FolderUpload = () => {
       }
     }
   };
+
+  const handleFolderDelete = (index) => {
+    setSelectedFolders(prevSelectedFiles => {
+      prevSelectedFiles.splice(index, 1);
+      return [...prevSelectedFiles];
+    });
+  }
+
+  const selectedFoldersModal = (
+    <Modal
+    open={isSelectedFoldersModalVisible}
+    onClose={() => {
+      setIsSelectedFoldersModalVisible(false);
+    }}>
+      <Box
+        style={{
+          backgroundColor: 'white',
+          padding: '20px',
+          borderRadius: '8px',
+          maxWidth: '500px',
+          margin: 'auto',
+          marginTop: '10%',
+        }}
+      >
+        <Typography variant='h6'> Selected Folder(s) </Typography>
+        <List dense={true}>
+          {selectedFolders.map((folder, index) => (
+            <ListItem key={index}
+            secondaryAction={
+              <IconButton onClick={() => handleFolderDelete(index)}>
+                <DeleteIcon />
+              </IconButton>
+            }>
+              <ListItemText
+                primary={folder[0].webkitRelativePath.substring(0, folder[0].webkitRelativePath.indexOf('/'))}
+                secondary={`${folder.length - 1} file(s)`}
+              />
+            </ListItem>
+          ))}
+        </List>
+        <Box display='flex' justifyContent='space-between'>
+          <Button
+            variant='contained'
+            onClick={() => {
+              if (fileInputRef.current) fileInputRef.current.click();
+            }}
+          >
+            Add
+          </Button>
+          <Button
+            variant='contained'
+            onClick={() => setIsSelectedFoldersModalVisible(false)}
+          >
+            Close
+          </Button>
+        </Box>
+      </Box>
+    </Modal>
+  );
 
   return (
     <Box
@@ -132,30 +197,22 @@ const FolderUpload = () => {
           >
             <Grid item xs={12} sm={12} md={12} lg={12}>
               <Typography variant="h4" gutterBottom align="center">
-                Drone pilot - Folder Upload Page
+                Drone Imagery Folder(s) Upload Page
               </Typography>
             </Grid>
-            
-            <Grid item xs={12} sm={12} md={12} lg={12}>
-              <label htmlFor="file-input" style={{border: '2px dashed #ccc', 
+
+            <Grid item xs={6} sm={6} md={6} lg={6} container spacing={2} alignItems="stretch">
+            <Grid item xs={8} sm={8} md={8} lg={8} style={{ display: 'flex' }}>
+              <label style={{border: '2px dashed #ccc', 
               borderRadius: '4px', 
               padding: '2px', 
               textAlign: 'center', 
-              cursor: 'pointer',
               display: 'grid',
-              minHeight: '100px',
+              minHeight: '50px',
               justifyContent: 'center',
-              alignItems: 'center'}}
-              fullWidth>
-                {selectedFiles.length === 0 ? (
-                  <>
-                    Drag and drop your folder here or click to select a folder.
-                  </>
-                ) : (
-                  <>
-                    {selectedFiles.length} file(s) selected.
-                  </>
-                )}
+              alignItems: 'center',
+              flex: 1}}>
+                {selectedFolders.length} folder(s) selected. <br/> Total {selectedFolders.reduce((total, folder) => {return total + folder.length - 1}, 0)} file(s) selected.
               </label>
               <input
                 type="file"
@@ -165,9 +222,24 @@ const FolderUpload = () => {
                 webkitdirectory="true"
                 onChange={handleFileChange}
                 disabled={loading}
-                // inputRef={filesRef}
+                ref={fileInputRef}
               />
             </Grid>
+            <Grid item xs={4} sm={4} md={4} lg={4} style={{ display: 'flex' }}>
+              <Button
+                  style={{flex: 1}}
+                  fullWidth
+                  variant="contained"
+                  onClick={() => setIsSelectedFoldersModalVisible(true)}
+                  disabled={loading}
+                >
+                  Add or update folder(s)
+                </Button>
+              {selectedFoldersModal}
+            </Grid>
+            </Grid>
+            {/* Placeholder grid container */}
+            <Grid item xs={6} sm={6} md={6} lg={6}></Grid> 
             <Grid item xs={6} sm={6} md={6} lg={6}>
               <TextField required 
               fullWidth type="text" name="pilotName" 
@@ -194,9 +266,9 @@ const FolderUpload = () => {
                 variant="contained"
                 color="primary"
                 onClick={handleUpload}
-                disabled={(selectedFiles.length === 0) || (pilotNameRef.current.value === '') || (cloudinessRef.current.value === '') || (loading)}
+                disabled={(selectedFolders.length === 0) || (pilotNameRef.current.value === '') || (cloudinessRef.current.value === '') || (loading)}
               >
-                {loading ? <CircularProgress size={24} color="inherit" /> : 'Upload Folder'}
+                {loading ? <CircularProgress size={24} color="inherit" /> : 'Upload Folder(s)'}
               </Button>
             </Grid>
           </Grid>
