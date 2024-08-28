@@ -9,5 +9,10 @@ config = {
     # },
     'flights_dir': '/rs1/shares/cals-research-station/sandhills/transfer'
                    '/flights/',
-    'code_dir': '/rs1/shares/cals-research-station/virtual/software/app1_5/'
+    'code_dir': '/rs1/shares/cals-research-station/virtual/software/app1_5/',
+    'log_file': '/rs1/shares/cals-research-station/virtual/software/app1_5'
+                '/logs/cron_log.json',
+    'python_exec': '/rs1/shares/cals-research-station/virtual/software/app1_5'
+                   '/venv/bin/python3',
+    'scratch_dir': '/share/hpc-support/jfossot/tmp',
 }
