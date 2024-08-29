@@ -1,7 +1,7 @@
 // FolderUpload.js
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
-import { Grid, Box, Typography, Button, FormControl, TextField, CircularProgress, Modal, List, ListItem, ListItemText, IconButton } from '@mui/material';
+import { Grid, Box, Typography, Button, FormControl, TextField, CircularProgress, Modal, List, ListItem, ListItemText, IconButton, InputLabel, Select, MenuItem } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 const FolderUpload = () => {
@@ -9,7 +9,7 @@ const FolderUpload = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     'pilotName': '',
-    'weatherConditions': '',
+    'cloudiness': '',
     'comments': ''
   });
   const [isSelectedFoldersModalVisible, setIsSelectedFoldersModalVisible] = useState(false);
@@ -85,7 +85,7 @@ const FolderUpload = () => {
       setLoading(false);
       setFormData({
         'pilotName': '',
-        'weatherConditions': '',
+        'cloudiness': '',
         'comments': ''
       });
       setSelectedFolders((prevSelectedFiles) => {
@@ -248,11 +248,25 @@ const FolderUpload = () => {
               disabled={loading}/>
             </Grid>
             <Grid item xs={6} sm={6} md={6} lg={6}>
-              <TextField required 
-              fullWidth type="text" name="cloudiness" 
-              value={formData.cloudiness} onChange={handleInputChange} 
-              label="Cloudiness" inputRef={cloudinessRef}
-              disabled={loading}/>
+              <FormControl fullWidth required disabled={loading}>
+                  <InputLabel id="cloudiness-label">Cloudiness</InputLabel>
+                  <Select
+                    labelId="cloudiness-label"
+                    name="cloudiness"
+                    value={formData.cloudiness}
+                    onChange={handleInputChange}
+                    label="Cloudiness"
+                    inputRef={cloudinessRef}
+                  >
+                    <MenuItem value={'fully sunny'}>Fully Sunny</MenuItem>
+                    <MenuItem value={'0-20% cloudiness'}>0-20% cloudiness</MenuItem>
+                    <MenuItem value={'20-40% cloudiness'}>20-40% cloudiness</MenuItem>
+                    <MenuItem value={'40-60% cloudiness'}>40-60% cloudiness</MenuItem>
+                    <MenuItem value={'60-80% cloudiness'}>60-80% cloudiness</MenuItem>
+                    <MenuItem value={'80-100% cloudiness'}>80-100% cloudiness</MenuItem>
+                    <MenuItem value={'fully cloudy'}>Fully Cloudy</MenuItem>
+                  </Select>
+                </FormControl>
             </Grid>
             <Grid item xs={12} sm={12} md={12} lg={12}>
               <TextField fullWidth 
@@ -266,7 +280,7 @@ const FolderUpload = () => {
                 variant="contained"
                 color="primary"
                 onClick={handleUpload}
-                disabled={(selectedFolders.length === 0) || (pilotNameRef.current.value === '') || (cloudinessRef.current.value === '') || (loading)}
+                disabled={(selectedFolders.length === 0) || (formData.pilotName === '') || (formData.cloudiness === '') || (loading)}
               >
                 {loading ? <CircularProgress size={24} color="inherit" /> : 'Upload Folder(s)'}
               </Button>
