@@ -51,16 +51,22 @@ def connectDb():
     return client, collection
 
 
-def updateRecord(flight_dir, flight_id, status):
+def updateRecord(flight_dir, flight_id, status, research_station='virtual'):
+    """
+    The research_station parameter is only used when status is processed hence
+    the default value to avoid passing the variable in all updateRecord calls.
+    """
     try:
         if status == 'processed':
             source_crs = readCRS(flight_dir)
 
-            orthophoto_path = os.path.join(flight_id, 'odm_orthophoto',
+            orthophoto_path = os.path.join(research_station, 'flights',
+                                           flight_id, 'odm_orthophoto',
                                            'odm_orthophoto.tif')
-            cog_path = os.path.join(flight_id, 'odm_orthophoto',
-                                    'odm_orthophoto_cog.tif')
-            veg_index_folder = os.path.join(flight_id, 'veg_indices')
+            cog_path = os.path.join(research_station, 'flights', flight_id,
+                                    'odm_orthophoto', 'odm_orthophoto_cog.tif')
+            veg_index_folder = os.path.join(research_station, 'flights',
+                                            flight_id, 'veg_indices')
 
             query = {'flight_id': flight_id}
             update = {"$set": {
