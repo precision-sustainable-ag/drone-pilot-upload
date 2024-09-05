@@ -60,8 +60,8 @@ def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
         export flight_dir={flight_dir}
         export ortho_file={ortho_file}
         cd $flight_dir
-        singularity run --bind $flight_dir,$tmp_dir --writable-tmpfs {ortho_intel_sif_file} 
-        $ortho_file $flight_dir""")
+        singularity run --bind $flight_dir,$tmp_dir --writable-tmpfs \
+        {ortho_intel_sif_file} $ortho_file $flight_dir""")
     else:
         lsfScript = None
     return lsfScript
