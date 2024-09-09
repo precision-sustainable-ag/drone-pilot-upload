@@ -22,28 +22,21 @@ const FolderUpload = () => {
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     // check that the folder being uploaded contains atleast one image
-    let imageFlag = false;
     const imgExtensions = ['.jpg', '.jpeg', '.tif'];
-    if (files.length > 0) {
-      for (let i=0; i< files.length; i++) {
-        const fileName = files[i].name;
-        const fileNameParts = fileName.split('.');
-        const fileExtension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
-        if (imgExtensions.includes(fileExtension)) {
-          imageFlag = true;
-          break;
-        }
-      }
-      if (!imageFlag) {
-        alert('Please upload a folder with atleast one image in it');
-      }
-      
-      if (imageFlag) {
-        setSelectedFolders(prevSelectedFolders => [...prevSelectedFolders, files]);
-      }
+    const imageFiles = files.filter((file) => {
+      const fileNameParts = file.name.split('.');
+      const fileExtension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
+      return imgExtensions.includes(fileExtension);
+    });
+
+    if (imageFiles.length <= 0) {
+      alert('Please upload a folder with atleast one image in it');
+    } else {
+      setSelectedFolders((prevSelectedFolders) => [
+        ...prevSelectedFolders,
+        imageFiles,
+      ]);
     }
-    
-    
   };
 
   const handleInputChange = (e) => {
@@ -137,7 +130,7 @@ const FolderUpload = () => {
             }>
               <ListItemText
                 primary={folder[0].webkitRelativePath.substring(0, folder[0].webkitRelativePath.indexOf('/'))}
-                secondary={`${folder.length - 1} file(s)`}
+                secondary={`${folder.length} file(s)`}
               />
             </ListItem>
           ))}
@@ -212,7 +205,7 @@ const FolderUpload = () => {
               justifyContent: 'center',
               alignItems: 'center',
               flex: 1}}>
-                {selectedFolders.length} folder(s) selected. <br/> Total {selectedFolders.reduce((total, folder) => {return total + folder.length - 1}, 0)} file(s) selected.
+                {selectedFolders.length} folder(s) selected. <br/> Total {selectedFolders.reduce((total, folder) => {return total + folder.length}, 0)} file(s) selected.
               </label>
               <input
                 type="file"

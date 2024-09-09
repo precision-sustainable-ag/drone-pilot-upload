@@ -87,7 +87,9 @@ def updateRecord(flight_dir, flight_id, status):
 def countFiles(path):
     file_count = 0
     for root, dirs, files in os.walk(path):
-        file_count += len(files)
+        for file in files:
+            if file.lower().endswith(('.jpg', '.jpeg', '.tif')):
+                file_count += 1
     return file_count
 
 
