@@ -134,9 +134,10 @@ def processFlight(flight_id):
                 utils.updateRecord(flight_dir, flight_id, 'ortho generated')
                 ortho_file = os.path.join(flight_dir, 'odm_orthophoto',
                                           'odm_orthophoto.tif')
-                generateLsfScript(flight_dir, flight_id, 'ortho_intel',
-                                  ortho_file)
-                job_id = utils.lsfSubmitJob(odm_script, flight_dir)
+                ortho_intel_script = generateLsfScript(flight_dir, flight_id,
+                                                       'ortho_intel',
+                                                       ortho_file)
+                job_id = utils.lsfSubmitJob(ortho_intel_script, flight_dir)
                 logging.info({
                     'service': 'processFlight',
                     'message': f'{flight_id} - ortho intel job submitted -'
