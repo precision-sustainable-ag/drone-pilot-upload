@@ -37,8 +37,9 @@ def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
         cd $output_dir
         singularity run --bind $output_dir/code/images,$tmp_dir \
         --writable-tmpfs --nv {odm_sif_file} --project-path $output_dir \
-        --feature-quality ultra --min-num-features 50000 \
-        --orthophoto-compression LZMA --orthophoto-resolution 0.001 --dsm --dtm
+        --ignore-gsd --dtm --orthophoto-resolution 0.01 --smrf-threshold 0.4 \
+        --smrf-window 24 --dsm --ignore-gsd --feature-quality ultra \
+        --max-concurrency 16 --min-num-features 50000
         """)
         print(f' LSF submission script written in file {lsfScript}')
 
