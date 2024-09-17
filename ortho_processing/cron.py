@@ -20,10 +20,11 @@ def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
         lsfScript = os.path.join(flight_dir, 'odm_lsf.sh')
         with open(lsfScript, 'w') as file:
             file.write(f"""#!/bin/bash
-        #BSUB -n 8
+        #BSUB -n 32
         ## requested job run time
         #BSUB -W 30:00
         #BSUB -q gpu
+        #BSUB -x
         #BSUB -R "select[ a100 || a10 || a30 ]"
         #BSUB -gpu "num=1:mode=shared:mps=no"
         ## Tag general output file and std error output
@@ -35,10 +36,11 @@ def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
         mkdir -p $output_dir/code/images
         cp $images_dir/* $output_dir/code/images
         cd $output_dir
-        singularity run --bind $output_dir/code/images,$tmp_dir --writable-tmpfs --nv {odm_sif_file} \
-        --feature-quality ultra --min-num-features 50000 \
-        --orthophoto-compression LZMA --orthophoto-resolution 0.001 \
-        --project-path $output_dir --dsm --dtm
+        singularity run --bind $output_dir/code/images,$tmp_dir \
+        --writable-tmpfs --nv {odm_sif_file} --project-path $output_dir \
+        --ignore-gsd --dtm --orthophoto-resolution 0.01 --smrf-threshold 0.4 \
+        --smrf-window 24 --dsm --ignore-gsd --feature-quality ultra \
+        --max-concurrency 16 --min-num-features 50000
         """)
         print(f' LSF submission script written in file {lsfScript}')
 
@@ -134,9 +136,10 @@ def processFlight(flight_id):
                 utils.updateRecord(flight_dir, flight_id, 'ortho generated')
                 ortho_file = os.path.join(flight_dir, 'odm_orthophoto',
                                           'odm_orthophoto.tif')
-                generateLsfScript(flight_dir, flight_id, 'ortho_intel',
-                                  ortho_file)
-                job_id = utils.lsfSubmitJob(odm_script, flight_dir)
+                ortho_intel_script = generateLsfScript(flight_dir, flight_id,
+                                                       'ortho_intel',
+                                                       ortho_file)
+                job_id = utils.lsfSubmitJob(ortho_intel_script, flight_dir)
                 logging.info({
                     'service': 'processFlight',
                     'message': f'{flight_id} - ortho intel job submitted -'
