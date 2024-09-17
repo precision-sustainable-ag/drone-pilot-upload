@@ -49,7 +49,7 @@ def acceptUpload():
     try:
         if flask.request.method == 'POST':
             metadata = json.loads(flask.request.form['metadata'])
-            files = sorted([file for file in flask.request.files.getlist("files") if file.filename.lower().endswith(('.jpg', '.jpeg', '.tif'))],
+            files = sorted([file for file in flask.request.files.getlist("files") if not file.filename.lower().startswith('.')],
                            key=file_sorter)
             file_count = len(files)
             flight_id = str(uuid.uuid4())

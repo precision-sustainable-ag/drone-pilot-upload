@@ -22,7 +22,7 @@ const FolderUpload = () => {
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     // check that the folder being uploaded contains atleast one image
-    const imgExtensions = ['.jpg', '.jpeg', '.tif'];
+    const imgExtensions = ['.jpg', '.jpeg', '.tif', '.tiff'];
     const imageFiles = files.filter((file) => {
       const fileNameParts = file.name.split('.');
       const fileExtension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
