@@ -21,15 +21,18 @@ const FolderUpload = () => {
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
-    // check that the folder being uploaded contains atleast one image
+    // check that the folder being uploaded contains atleast one image and ignore hidden file (starting with '.')
+    var imageFlag = 0;
     const imgExtensions = ['.jpg', '.jpeg', '.tif', '.tiff'];
     const imageFiles = files.filter((file) => {
       const fileNameParts = file.name.split('.');
       const fileExtension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
-      return imgExtensions.includes(fileExtension);
+      if (imgExtensions.includes(fileExtension)) 
+          imageFlag = 1;
+      return !(file.name.startsWith('.') || file.name.startsWith('desktop.ini') );
     });
 
-    if (imageFiles.length <= 0) {
+    if (!imageFlag) {
       alert('Please upload a folder with atleast one image in it');
     } else {
       setSelectedFolders((prevSelectedFolders) => [
