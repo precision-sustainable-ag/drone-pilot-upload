@@ -6,6 +6,8 @@ from flask import Flask, Request
 from flask_cors import CORS
 import utils
 from config import config
+
+
 # import sentry_sdk
 
 
@@ -49,9 +51,13 @@ def acceptUpload():
     try:
         if flask.request.method == 'POST':
             metadata = json.loads(flask.request.form['metadata'])
-            files = sorted([file for file in flask.request.files.getlist("files") if not file.filename.lower().startswith('.')],
-                           key=file_sorter)
-            file_count = len(files)
+            files = sorted(
+                [file for file in flask.request.files.getlist("files") if
+                 not file.filename.lower().startswith('.')],
+                key=file_sorter)
+            img_count = len([file for file in files if
+                              file.filename.lower().endswith(
+                                  ('.jpg', '.jpeg', '.tif', '.tiff'))])
             flight_id = str(uuid.uuid4())
             logging.info({
                 'flight_id': flight_id,
@@ -109,7 +115,8 @@ def acceptUpload():
             del flight_details['misc_files']
 
             # adding number of files for checking data upload status
-            flight_details['num_files'] = file_count
+            # TODO: update this to num_imgs instead
+            flight_details['num_files'] = img_count
 
             utils.insertDb(flight_details)
 
