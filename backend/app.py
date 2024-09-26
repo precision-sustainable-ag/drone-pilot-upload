@@ -51,6 +51,8 @@ def acceptUpload():
     try:
         if flask.request.method == 'POST':
             metadata = json.loads(flask.request.form['metadata'])
+            research_station = config['research_station_mapping'][
+                metadata['research_station']]
             files = sorted(
                 [file for file in flask.request.files.getlist("files") if
                  not file.filename.lower().startswith('.')],
@@ -85,7 +87,9 @@ def acceptUpload():
                 return flask.Response(response=json.dumps(response),
                                       status=status_code)
 
-            flight_details = utils.createFolderStructure(flight_id, files,
+            flight_details = utils.createFolderStructure(flight_id,
+                                                         research_station,
+                                                         files,
                                                          check_radiance_panels)
 
             # explicit closing of files to empty filedescriptor (file pointers)
@@ -98,6 +102,7 @@ def acceptUpload():
             flight_details['pilot_name'] = metadata['pilotName']
             flight_details['cloudiness'] = metadata['cloudiness']
             flight_details['comments'] = metadata['comments']
+            flight_details['research_station'] = research_station
             flight_details[
                 'display_name'] = f"{flight_details['mission_start_time']}" \
                                   f"-{flight_details['cloudiness']}-" \

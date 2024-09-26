@@ -9,14 +9,17 @@ const FolderUpload = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     'pilotName': '',
+    'comments': '',
+    'station': '',
     'cloudiness': '',
-    'comments': ''
   });
   const [isSelectedFoldersModalVisible, setIsSelectedFoldersModalVisible] = useState(false);
 
   const pilotNameRef = useRef();
   const cloudinessRef = useRef();
   const commentsRef = useRef();
+  const stationRef = useRef();
+
   const fileInputRef = useRef();
 
   const handleFileChange = (e) => {
@@ -61,7 +64,8 @@ const FolderUpload = () => {
     const metadataJson = {
       'pilotName': formData.pilotName,
       'cloudiness': formData.cloudiness,
-      'comments': formData.comments
+      'comments': formData.comments,
+      'research_station': formData.research_station,
     };
     formDataToSend.append('action', 'imageUpload');
     formDataToSend.append('metadata', JSON.stringify(metadataJson));
@@ -82,7 +86,8 @@ const FolderUpload = () => {
       setFormData({
         'pilotName': '',
         'cloudiness': '',
-        'comments': ''
+        'comments': '',
+        'research_station': '',
       });
       setSelectedFolders((prevSelectedFiles) => {
         return [];
@@ -95,6 +100,9 @@ const FolderUpload = () => {
       }
       if (commentsRef.current) {
         commentsRef.current.value = '';
+      }
+      if (stationRef.current) {
+        stationRef.current.value = '';
       }
     }
   };
@@ -157,7 +165,36 @@ const FolderUpload = () => {
       </Box>
     </Modal>
   );
-
+  const researchStations = ["Border Belt Tobacco Research Station",
+  "Central Crops Research Station",
+  "Horticultural Crops Research Station - Castle Hayne",
+  "Horticultural Crops Research Station - Clinton",
+  "Lower Coastal Plain / Cunningham Research Station",
+  "Mountain Research Station",
+  "Mountain Horticultural Crops Research and Extension Center",
+  "Oxford Tobacco Research Station",
+  "Peanut Belt Research Station",
+  "Piedmont Research Station",
+  "Sandhills Research Station",
+  "Tidewater Research Station",
+  "Upper Coastal Plain Research Station",
+  "Upper Mountain Research Station",
+  "Upper Piedmont Research Station",
+  "Caswell Research Station",
+  "Cherry Research Station",
+  "Umstead Research Station",
+  "Virtual Research Station"
+]
+const ITEM_HEIGHT = 48;
+const ITEM_PADDING_TOP = 8;
+const MenuProps = {
+  PaperProps: {
+    style: {
+      maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
+      width: 250,
+    },
+  },
+};
   return (
     <Box
       style={{
@@ -182,7 +219,7 @@ const FolderUpload = () => {
         mt={1}
       >
         <Box mr={1} ml={1} mb={1} mt={1}>
-        <FormControl>
+        <FormControl fullWidth>
           <Grid
             container
             item
@@ -199,10 +236,10 @@ const FolderUpload = () => {
 
             <Grid item xs={6} sm={6} md={6} lg={6} container spacing={2} alignItems="stretch">
             <Grid item xs={8} sm={8} md={8} lg={8} style={{ display: 'flex' }}>
-              <label style={{border: '2px dashed #ccc', 
+              <label style={{border: '2px dashed #ccc',
               borderRadius: '4px', 
               padding: '2px', 
-              textAlign: 'center', 
+              textAlign: 'center',
               display: 'grid',
               minHeight: '50px',
               justifyContent: 'center',
@@ -235,7 +272,18 @@ const FolderUpload = () => {
             </Grid>
             </Grid>
             {/* Placeholder grid container */}
-            <Grid item xs={6} sm={6} md={6} lg={6}></Grid> 
+            <Grid item xs={6} sm={6} md={6} lg={6}>
+              <FormControl fullWidth required disabled={loading}>
+              <InputLabel id="select-label">Research Station</InputLabel>
+              <Select labelId="select-label"
+              name="research_station" onChange={handleInputChange} inputRef={stationRef}
+              value={formData.research_station} label="Research Station" MenuProps={MenuProps}>
+                {researchStations.map((station) => (
+                  <MenuItem key={station} value={station}>{station}</MenuItem>
+                ))}
+              </Select>
+              </FormControl>
+            </Grid>
             <Grid item xs={6} sm={6} md={6} lg={6}>
               <TextField required 
               fullWidth type="text" name="pilotName" 
@@ -243,6 +291,7 @@ const FolderUpload = () => {
               label="Pilot Name" inputRef={pilotNameRef}
               disabled={loading}/>
             </Grid>
+
             <Grid item xs={6} sm={6} md={6} lg={6}>
               <FormControl fullWidth required disabled={loading}>
                   <InputLabel id="cloudiness-label">Cloudiness</InputLabel>
@@ -270,6 +319,7 @@ const FolderUpload = () => {
               onChange={handleInputChange} label="Additional comments" 
               inputRef={commentsRef} disabled={loading}/>
             </Grid>
+
             <Grid item xs={12} sm={12} md={12} lg={12}>
               <Button
                 fullWidth

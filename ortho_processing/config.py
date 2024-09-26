@@ -7,8 +7,9 @@ config = {
     #     'auth_source': 'admin',
     #     'collection': 'flight-information'
     # },
-    'flights_dir': '/rs1/shares/cals-research-station/sandhills/transfer'
-                   '/flights/',
+    # 'flights_dir': '/rs1/shares/cals-research-station/sandhills/transfer'
+    #                '/flights/',
+    'mount_dir': '/rs1/shares/cals-research-station/',
     'code_dir': '/rs1/shares/cals-research-station/virtual/software/app1_5/',
     'log_file': '/rs1/shares/cals-research-station/virtual/software/app1_5'
                 '/logs/cron_log.json',
