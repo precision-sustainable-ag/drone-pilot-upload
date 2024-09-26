@@ -88,7 +88,10 @@ def processFlight(flight_id):
     client, db_collection = utils.connectDb()
     query = {'flight_id': flight_id}
     flight_metadata = db_collection.find(query)[0]
-    flight_dir = os.path.join(config['flights_dir'], flight_id)
+    research_station = flight_metadata['research_station']
+    flight_dir = os.path.join(config['mount_dir'], research_station, 'flights',
+                              flight_id)
+    # flight_dir = os.path.join(config['flights_dir'], flight_id)
     if flight_metadata['num_files'] == utils.countFiles(flight_dir):
         odm_script = generateLsfScript(flight_dir, flight_id, 'odm')
         utils.updateRecord(flight_dir, flight_id, 'processing')
