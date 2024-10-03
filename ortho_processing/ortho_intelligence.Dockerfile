@@ -43,4 +43,5 @@ WORKDIR /code
 COPY ortho_intelligence.py .
 
 
-ENTRYPOINT ["python3", "/code/ortho_intelligence.py"]
+#ENTRYPOINT ["python3", "/code/ortho_intelligence.py"]
+ENTRYPOINT ["python3", "-u","/code/ortho_intelligence.py"]
