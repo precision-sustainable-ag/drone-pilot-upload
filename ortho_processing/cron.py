@@ -40,7 +40,6 @@ def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
         --dtm --orthophoto-resolution 0.01 --smrf-threshold 0.4 \
         --smrf-window 24 --dsm --feature-quality ultra --min-num-features 50000
         """)
-        print(f' LSF submission script written in file {lsfScript}')
 
     elif process_name == 'ortho_intel':
         lsfScript = os.path.join(flight_dir, 'ortho_intel_lsf.sh')
@@ -48,14 +47,14 @@ def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
                                             'drone_ortho_intel.sif')
         with open(lsfScript, 'w') as file:
             file.write(f"""#!/bin/bash
-        #BSUB -n 16
+        #BSUB -n 32
         ## requested job run time
         #BSUB -W 5:00
         #BSUB -q sif
         #BSUB -R "select[avx2]"
         ## Tag general output file and std error output
-        #BSUB -o out-{flight_id}.ortho_intel
-        #BSUB -e err-{flight_id}.ortho_intel
+        #BSUB -o ortho_intel-out.txt
+        #BSUB -e ortho_intel-err.txt
         export tmp_dir={config['scratch_dir']}
         export flight_dir={flight_dir}
         export ortho_file={ortho_file}
@@ -65,20 +64,6 @@ def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
     else:
         lsfScript = None
     return lsfScript
-
-
-# send these records for processing
-# add multiprocessing/multithreading when triggering
-# def trigger(flight_id):
-#     try:
-#         flight_dir = os.path.join(config['flights_dir'], flight_id)
-#         results = subprocess.run([config['python_exec'],
-#                                   './drone-pilot-upload/ortho_processing/DronePilot-lsf-script.py',
-#                                   flight_dir,
-#                                   flight_id], cwd=config['code_dir'])
-#         print(flight_dir)
-#     except Exception as e:
-#         print('except ', e)
 
 
 def processFlight(flight_id):
@@ -126,8 +111,6 @@ def processFlight(flight_id):
                 })
                 # jobEndTime = parseJsonLogFile("endTime", flight_dir)
                 # jobTotalTime = parseJsonLogFile("totalTime", flight_dir)
-                # print(
-                #     f"{jobID} completed at {jobEndTime} running for {jobTotalTime} secs")
                 for item in os.listdir(code_dir):
                     item_path = os.path.join(code_dir, item)
                     if item != 'images':
@@ -155,7 +138,8 @@ def processFlight(flight_id):
                         'message': f'{flight_id} - ortho intel processing '
                                    f'complete'
                     })
-                    utils.updateRecord(flight_dir, flight_id, 'processed')
+                    utils.updateRecord(flight_dir, flight_id, 'processed',
+                                       research_station)
                     return flight_id
                 else:
                     logging.error({
