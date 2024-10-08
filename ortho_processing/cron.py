@@ -22,7 +22,7 @@ def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
             file.write(f"""#!/bin/bash
         #BSUB -n 32
         ## requested job run time
-        #BSUB -W 15:00
+        #BSUB -W 30:00
         #BSUB -q gpu
         #BSUB -R "select[ a100 || a10 || a30 ]"
         #BSUB -gpu "num=1:mode=shared:mps=no"

@@ -10,6 +10,7 @@ def generateVegIndices(ortho_file, flight_dir):
     if not os.path.exists(index_folder):
         os.makedirs(index_folder)
     rasterio_dataset = rasterio.open(ortho_file)
+    print("RasterIO dataset read")
     band_mapping = {}
     for band, name in zip(rasterio_dataset.indexes,
                           rasterio_dataset.descriptions):
@@ -18,6 +19,7 @@ def generateVegIndices(ortho_file, flight_dir):
     # bandmapping > 4 (and not 3) indicates multispec since there always is
     # an empty band
     if len(band_mapping) > 3:
+        print("Running multispec pipeline")
         red_band = rasterio_dataset.read(band_mapping['red']).astype('float64')
         nir_band = rasterio_dataset.read(band_mapping['nir']).astype('float64')
 
@@ -25,6 +27,7 @@ def generateVegIndices(ortho_file, flight_dir):
         ndvi = np.where((nir_band == 0.) | (red_band == 0.), -255,
                         np.where((nir_band + red_band) == 0., 0,
                                  (nir_band - red_band) / (nir_band + red_band)))
+        print("NDVI values generated")
 
         del red_band
         del nir_band
@@ -37,13 +40,17 @@ def generateVegIndices(ortho_file, flight_dir):
         with rasterio.open(os.path.join(index_folder, 'ndvi_image.tif'), 'w',
                            **profile, BIGTIFF='YES') as op:
             op.write(ndvi.astype(rasterio.float64), 1)
+        print("NDVI file written")
 
         lai = 0.75 * np.exp(ndvi)
+        print("LAI values generated")
         del ndvi
         with rasterio.open(os.path.join(index_folder, 'lai_image.tif'), 'w',
                            **profile, BIGTIFF='YES') as op:
             op.write(lai.astype(rasterio.float64), 1)
+        print("LAI file written")
     else:
+        print("Running RGB pipeline")
         try:
             red_band = rasterio_dataset.read(band_mapping['red']).astype(
                 'float64')
@@ -54,7 +61,7 @@ def generateVegIndices(ortho_file, flight_dir):
             vari = np.where((green_band + red_band - blue_band) == 0, np.nan,
                             (green_band - red_band) / (
                                     green_band + red_band - blue_band))
-
+            print("VARI values generated")
             del red_band
             del green_band
             del blue_band
@@ -71,9 +78,10 @@ def generateVegIndices(ortho_file, flight_dir):
                                'w',
                                **profile, BIGTIFF='YES') as op:
                 op.write(vari.astype(rasterio.float64), 1)
+            print("VARI file written")
+
             # explict delete to claim memory
             del vari
-
             red_band = rasterio_dataset.read(band_mapping['red']).astype(
                 'float64')
             green_band = rasterio_dataset.read(band_mapping['green']).astype(
@@ -84,16 +92,19 @@ def generateVegIndices(ortho_file, flight_dir):
             gli = np.where((2 * green_band + red_band + blue_band) == 0, np.nan,
                            (2 * green_band - red_band - blue_band) / (
                                    2 * green_band + red_band + blue_band))
-
             del red_band
             del green_band
             del blue_band
 
             # Set any potential division by zero or NaN values to NaN
             gli[np.isnan(gli)] = np.nan
+            print("GLI values generated")
+
             with rasterio.open(os.path.join(index_folder, 'gli_image.tif'), 'w',
                                **profile, BIGTIFF='YES') as op:
                 op.write(gli.astype(rasterio.float64), 1)
+            print("GLI file written")
+
         except Exception as e:
             print(e)
 
@@ -104,5 +115,8 @@ if __name__ == '__main__':
 
     cog_file = os.path.join(os.path.split(ortho_file)[0],
                             'odm_orthophoto_cog.tif')
-    subprocess.run(['rio', 'cogeo', 'create', ortho_file, cog_file])
+    rio_op = subprocess.run(['rio', 'cogeo', 'create', ortho_file, cog_file],
+                   capture_output=True, text=True)
+    print(f"RIO OUTPUT:: \n\n{rio_op.stdout}")
+    print(f"RIO ERROR:: \n\n{rio_op.stderr}")
     generateVegIndices(cog_file, flight_dir)
