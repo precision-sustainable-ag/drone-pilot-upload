@@ -119,4 +119,4 @@ if __name__ == '__main__':
                    capture_output=True, text=True)
     print(f"RIO OUTPUT:: \n\n{rio_op.stdout}")
     print(f"RIO ERROR:: \n\n{rio_op.stderr}")
-    generateVegIndices(cog_file, flight_dir)
+    generateVegIndices(ortho_file, flight_dir)
