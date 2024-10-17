@@ -87,6 +87,9 @@ def processFlight(flight_id):
         status = utils.lsfMonitorJob(job_id, flight_id)
         if status != 'EXIT':
             code_dir = os.path.join(flight_dir, 'code')
+            # TODO: update this to read the actual status from log
+            # fails when HPC times out and status is not exit
+            # read to correctly mark pass/failed
             if not os.path.exists(os.path.join(code_dir, 'log.json')):
                 logging.error({
                     'service': 'processFlight',
@@ -111,6 +114,7 @@ def processFlight(flight_id):
                 })
                 # jobEndTime = parseJsonLogFile("endTime", flight_dir)
                 # jobTotalTime = parseJsonLogFile("totalTime", flight_dir)
+                # TODO: L117-123 - some 'code' folders aren't being deleted
                 for item in os.listdir(code_dir):
                     item_path = os.path.join(code_dir, item)
                     if item != 'images':
