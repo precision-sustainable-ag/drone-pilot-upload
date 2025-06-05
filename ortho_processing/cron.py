@@ -25,6 +25,7 @@ def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
         #BSUB -W 30:00
         #BSUB -q gpu
         #BSUB -R "select[ a100 || a10 || a30 ]"
+        #BSUB -R "rusage[mem=250GB]"
         #BSUB -gpu "num=1:mode=shared:mps=no"
         ## Tag general output file and std error output
         #BSUB -o odm_processing-out.txt
@@ -38,7 +39,8 @@ def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
         singularity run --bind $output_dir/code/images,$tmp_dir \
         --writable-tmpfs --nv {odm_sif_file} --project-path $output_dir \
         --dtm --orthophoto-resolution 0.01 --smrf-threshold 0.4 \
-        --smrf-window 24 --dsm --feature-quality ultra --min-num-features 50000
+        --smrf-window 24 --dsm --min-num-features 50000 --orthophoto-compression LZMA \
+        --feature-type sift --pc-quality ultra
         """)
 
     elif process_name == 'ortho_intel':

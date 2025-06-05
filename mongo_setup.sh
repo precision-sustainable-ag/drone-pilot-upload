@@ -27,13 +27,13 @@ sudo systemctl start mongod
 # add authenticaton
 # 
 # use admin
-# db.createUser(
-#   {
-#     user: "myUserAdmin",
-#     pwd: "abc123",
-#     roles: [ { role: "userAdminAnyDatabase", db: "admin" }, "dbAdminAnyDatabase", "readWriteAnyDatabase" ]
-#   }
-# )
+ db.createUser(
+   {
+     user: "admin_role",
+     pwd: "<insert>",
+     roles: [ { role: "userAdminAnyDatabase", db: "admin" }, "dbAdminAnyDatabase", "readWriteAnyDatabase" ]
+   }
+ )
 # 
 # add to config - security: authorization: "enabled"
 
