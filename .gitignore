@@ -27,9 +27,15 @@ yarn-error.log*
 */.idea
 .idea
 
+pyproj
+
+backend/config.py
+backend/tmp/
+backend/__pycache__
 backend/images/
 backend/flights/
 backend/.ipynb_checkpoints/
+backend/venv
 */*.ipynb
 backend/logs/*
 ortho_processing/drone_ortho_intel.tar

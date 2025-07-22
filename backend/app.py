@@ -4,6 +4,8 @@ import flask
 import logging
 from flask import Flask, Request
 from flask_cors import CORS
+from flask import send_from_directory
+import os
 import utils
 from config import config
 
@@ -16,6 +18,14 @@ class CustomRequest(Request):
         super(CustomRequest, self).__init__(*args, **kwargs)
         self.max_form_parts = config['max_file_count']
 
+LOG_DIR = os.path.join(os.path.dirname(__file__), 'logs')
+os.makedirs(LOG_DIR, exist_ok=True)
+
+logging.basicConfig(
+    filename=os.path.join(LOG_DIR, 'app.log'),
+    level=logging.DEBUG,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
 
 # sentry_sdk.init(
 #     dsn="http://b309d193beabb2ee01d0b04013ee8554@20.169.137.216//3",
@@ -28,6 +38,35 @@ app = Flask(__name__)
 app.request_class = CustomRequest
 CORS(app)
 
+# Path to the frontend build directory
+FRONTEND_BUILD_DIR = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')
+
+@app.route('/frontend/<path:path>')
+def serve_frontend_static(path):
+    return send_from_directory(FRONTEND_BUILD_DIR, path)
+
+@app.route('/frontend')
+
+@app.route('/frontend/<path:path>')
+def serve_frontend_index(path=""):
+    index_path = os.path.join(FRONTEND_BUILD_DIR, 'index.html')
+    print(f"🧭 Trying to serve: {index_path} (exists={os.path.exists(index_path)})")
+    return send_from_directory(FRONTEND_BUILD_DIR, 'index.html')
+
+# Serve frontend static files (e.g., JS, CSS)
+@app.route('/static/<path:path>')
+def serve_static(path):
+    return send_from_directory(os.path.join(FRONTEND_BUILD_DIR, 'static'), path)
+
+# Serve index.html for any frontend route not matched above
+@app.route('/', defaults={'path': ''})
+
+@app.route('/<path:path>')
+def serve_frontend(path):
+    if path != "" and os.path.exists(os.path.join(FRONTEND_BUILD_DIR, path)):
+        return send_from_directory(FRONTEND_BUILD_DIR, path)
+    else:
+        return send_from_directory(FRONTEND_BUILD_DIR, 'index.html')
 
 # app.config['MAX_CONTENT_LENGTH'] = 150 * 1024 * 1024 * 1024
 
@@ -35,6 +74,7 @@ CORS(app)
 # workstations
 @app.route('/ping', methods=['GET'])
 def ping():
+    logging.info("✅ /ping endpoint was hit")
     response_body = {
         'status': 'healthy'
     }

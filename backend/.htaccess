@@ -1,0 +1,6 @@
+PassengerEnabled on
+PassengerAppEnv development
+PassengerBaseURI /pun/dev/drone-pilot-backend
+RewriteEngine On
+RewriteRule ^/?frontend(/.*)?$ /pun/dev/drone-pilot-backend/frontend$1 [PT]
+
