@@ -18,14 +18,14 @@ cd "$FRONTEND_DIR"
 source /usr/local/apps/miniconda20240526/etc/profile.d/conda.sh
 conda activate node-env
 npm install
-npm run build
+npm run build:hpc
 conda deactivate
 
-echo "=== Updating backend dependencies ==="
-cd "$BACKEND_DIR"
-source venv/bin/activate
-pip install --upgrade -r requirements.txt
-deactivate
+# echo "=== Updating backend dependencies ==="
+# cd "$BACKEND_DIR"
+# source venv/bin/activate
+# pip install -r requirements.txt
+# deactivate
 
 echo "=== Triggering restart ==="
 echo "Updated on $(date)" > "$RESTART_FILE"
