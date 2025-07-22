@@ -1,4 +1,3 @@
-
 config = {
     'flight_data_folder': '/mnt/oit-research-storage/',
     # 'flight_data_folder': '/Users/jbshah/_p/test/backend_storage/flights/',
