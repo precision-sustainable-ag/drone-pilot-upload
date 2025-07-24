@@ -309,7 +309,7 @@ def getExifInfo(flight_details):
             'message': 'processing started'
         })
 
-        with exiftool.ExifToolHelper(executable="/usr/local/usrapps/drones/mspinega/exiftool/Image-ExifTool-13.31/bin/exiftool") as et:
+        with exiftool.ExifToolHelper(executable=config['exif_tool_path']) as et:
             first_image_exif_info = et.get_metadata(flight_details['flight_images'][0])[0]
 
         camera_make = first_image_exif_info['EXIF:Make']
@@ -330,7 +330,7 @@ def getExifInfo(flight_details):
             first_image_exif_info['EXIF:CreateDate'], date_format)
 
         coordinate_data = []
-        with exiftool.ExifToolHelper(executable="/usr/local/usrapps/drones/mspinega/exiftool/Image-ExifTool-13.31/bin/exiftool") as et:
+        with exiftool.ExifToolHelper(executable=config['exif_tool_path']) as et:
             all_img_exif_info = et.get_metadata(flight_details['flight_images'])
 
         for exif_info in all_img_exif_info:
