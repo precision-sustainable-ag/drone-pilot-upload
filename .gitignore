@@ -38,4 +38,6 @@ backend/.ipynb_checkpoints/
 backend/venv
 */*.ipynb
 backend/logs/*
+
 ortho_processing/drone_ortho_intel.tar
+ortho_processing/__pycache__

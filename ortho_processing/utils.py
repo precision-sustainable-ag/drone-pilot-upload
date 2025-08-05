@@ -41,11 +41,7 @@ def readCRS(flight_dir):
 
 def connectDb():
     database_details = config['database_details']
-    client = pymongo.MongoClient(database_details['host'],
-                                 username=database_details['username'],
-                                 password=database_details['password'],
-                                 authSource=database_details['auth_source'],
-                                 authMechanism='SCRAM-SHA-1')
+    client = pymongo.MongoClient(database_details['connection_string'])
     collection = client[database_details['database']][database_details[
         'collection']]
     return client, collection
