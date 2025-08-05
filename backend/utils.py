@@ -21,17 +21,21 @@ def setup_logging():
     log_folder = os.path.split(log_file)[0]
     if not os.path.exists(log_folder):
         os.makedirs(log_folder)
-    file_handler = TimedRotatingFileHandler(log_file, when='D', interval=30)
 
-    # Set the log level and formatter
+    # remove all existing handlers on the root logger
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+
+    file_handler = TimedRotatingFileHandler(log_file, when='D', interval=30)
     file_handler.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     file_handler.setFormatter(formatter)
 
-    # Add the file handler to the root logger
     logging.getLogger().setLevel(logging.INFO)
     logging.getLogger().addHandler(file_handler)
 
+    # debug print to confirm active log file
+    logging.info(f"logging configured to: {log_file}")
 
 setup_logging()
 

@@ -21,7 +21,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "build:hpc": "PUBLIC_URL=/pun/dev/drone-pilot-backend/frontend npm run build",
+    "build:hpc": "PUBLIC_URL=/pun/dev/drone-pilot-upload/frontend npm run build",
     "build:local": "PUBLIC_URL=/ npm run build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
