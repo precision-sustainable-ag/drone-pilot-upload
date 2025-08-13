@@ -16,25 +16,28 @@ from pyzxing import BarCodeReader
 import app
 from config import config
 
-
 def setup_logging():
     log_file = config['log_file']
     log_folder = os.path.split(log_file)[0]
     if not os.path.exists(log_folder):
         os.makedirs(log_folder)
-    file_handler = TimedRotatingFileHandler(log_file, when='D', interval=30)
 
-    # Set the log level and formatter
+    # remove all existing handlers on the root logger
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+
+    file_handler = TimedRotatingFileHandler(log_file, when='D', interval=30)
     file_handler.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     file_handler.setFormatter(formatter)
 
-    # Add the file handler to the root logger
     logging.getLogger().setLevel(logging.INFO)
     logging.getLogger().addHandler(file_handler)
 
+    # debug print to confirm active log file
+    logging.info(f"logging configured to: {log_file}")
 
-# setup_logging()
+setup_logging()
 
 def changeCRS(source_crs, target_crs, source_polygon):
     transformer = pyproj.Transformer.from_crs(source_crs, target_crs,
@@ -310,9 +313,8 @@ def getExifInfo(flight_details):
             'message': 'processing started'
         })
 
-        with exiftool.ExifTool() as et:
-            first_image_exif_info = et.get_metadata(
-                flight_details['flight_images'][0])
+        with exiftool.ExifToolHelper(executable=config['exif_tool_path']) as et:
+            first_image_exif_info = et.get_metadata(flight_details['flight_images'][0])[0]
 
         camera_make = first_image_exif_info['EXIF:Make']
         camera_model = first_image_exif_info['EXIF:Model']
@@ -332,9 +334,8 @@ def getExifInfo(flight_details):
             first_image_exif_info['EXIF:CreateDate'], date_format)
 
         coordinate_data = []
-        with exiftool.ExifTool() as et:
-            all_img_exif_info = et.get_metadata_batch(flight_details[
-                                                          'flight_images'])
+        with exiftool.ExifToolHelper(executable=config['exif_tool_path']) as et:
+            all_img_exif_info = et.get_metadata(flight_details['flight_images'])
 
         for exif_info in all_img_exif_info:
             if 'EXIF:CreateDate' in exif_info.keys():
@@ -403,11 +404,7 @@ def getExifInfo(flight_details):
 
 def insertDb(file_details):
     database_details = config['database_details']
-    client = pymongo.MongoClient(database_details['host'],
-                                 username=database_details['username'],
-                                 password=database_details['password'],
-                                 authSource=database_details['auth_source'],
-                                 authMechanism='SCRAM-SHA-1')
+    client = pymongo.MongoClient(database_details['connection_string'])
     collection = client[database_details['database']][database_details[
         'collection']]
     collection.insert_one(file_details)

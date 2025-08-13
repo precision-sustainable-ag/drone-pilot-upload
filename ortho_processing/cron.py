@@ -177,7 +177,7 @@ def main():
     # adding midnight as hour,min,sec (full datetime object is needed for mongo)
     yesterday = datetime.combine(yesterday, datetime.min.time())
     today = datetime.combine(today, datetime.min.time())
-    query = {"upload_time": {"$gte": yesterday, "$lt": today}}
+    query = {"upload_time": {"$lt": yesterday}}
 
     results = db_collection.find(query)
     records_to_process = []
