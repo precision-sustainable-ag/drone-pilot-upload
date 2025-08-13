@@ -1,4 +1,3 @@
-
 config = {
     'flight_data_folder': '/mnt/oit-research-storage/',
     # 'flight_data_folder': '/Users/jbshah/_p/test/backend_storage/flights/',
@@ -21,7 +20,8 @@ config = {
         'password': 'yolo',
         'database': 'drone-pilot',
         'auth_source': 'admin',
-        'collection': 'flight-information'
+        'collection': 'flight-information',
+        'connection_string': 'example string'
     },
     'research_station_mapping': {
         "Border Belt Tobacco Research Station": "border",
