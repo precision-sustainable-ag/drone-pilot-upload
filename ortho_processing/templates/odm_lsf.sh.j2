@@ -1,0 +1,28 @@
+#!/bin/bash
+#BSUB -n {{ n_cores }}
+## requested job run time
+#BSUB -W {{ wall }}
+#BSUB -q {{ queue }}
+#BSUB -R "select[gpu] span[hosts=1] rusage[mem={{ mem_gb }}GB]"
+#BSUB -gpu "num=1:mode=shared:mps=no"
+## Tag general output file and std error output
+#BSUB -o odm_processing-out.txt
+#BSUB -e odm_processing-err.txt
+
+export tmp_dir='{{ scratch_dir }}'
+export output_dir='{{ flight_dir }}'
+export images_dir='{{ images_dir }}'
+
+mkdir -p "$output_dir/code/images"
+cp "$images_dir"/* "$output_dir/code/images"
+cd "$output_dir"
+
+module load apptainer || module load singularity
+APPT=$(command -v apptainer || command -v singularity)
+"$APPT" --version
+
+"$APPT" run --bind "$output_dir/code/images","$tmp_dir" \
+  --writable-tmpfs --nv {{ odm_sif_file }} --project-path "$output_dir" \
+  --dtm --orthophoto-resolution 0.01 --smrf-threshold 0.4 \
+  --smrf-window 24 --dsm --min-num-features 50000 --orthophoto-compression LZMA \
+  --feature-type sift --pc-quality {{ pc_quality }}

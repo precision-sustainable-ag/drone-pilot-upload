@@ -75,6 +75,19 @@ def updateRecord(flight_dir, flight_id, status, research_station='virtual'):
 
             client, db_collection = connectDb()
             db_collection.update_one(query, update, upsert=True)
+        elif status == 'ortho generated':
+            source_crs = readCRS(flight_dir)
+            orthophoto_path = os.path.join(research_station, 'flights',
+                                           flight_id, 'odm_orthophoto',
+                                           'odm_orthophoto.tif')
+            query = {'flight_id': flight_id}
+            update = {"$set": {
+                "orthophoto_path": orthophoto_path,
+                "orthophoto_source_crs": source_crs,
+                "status": status
+            }}
+            client, db_collection = connectDb()
+            db_collection.update_one(query, update, upsert=True)
         else:
             query = {'flight_id': flight_id}
             update = {"$set": {

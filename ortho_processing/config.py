@@ -13,7 +13,7 @@ config = {
     'code_dir': '/usr/local/usrapps/drones/drone-pilot-upload/',
     'log_file': '/home/hpc.drone.svc/ondemand/data/drone-pilot-upload/cron_log.json',
     'python_exec': '/usr/local/usrapps/drones/drone-pilot-upload/backend/venv/bin/python3',
-    'scratch_dir': '/share/hpc-support/jfossot/tmp',
+    'scratch_dir': '/share/drones/hpc.drone.svc/tmp',
     'database_details': {
         'host': 'drone-pilot-test.bsgdbxt.mongodb.net',
         'username': 'mspinega',

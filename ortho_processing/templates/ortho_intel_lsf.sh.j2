@@ -1,0 +1,22 @@
+#!/bin/bash
+#BSUB -n {{ n_cores }}
+## requested job run time
+#BSUB -W {{ wall }}
+#BSUB -q {{ queue }}
+#BSUB -R "select[avx2]"
+## Tag general output file and std error output
+#BSUB -o ortho_intel-out.txt
+#BSUB -e ortho_intel-err.txt
+
+export tmp_dir='{{ scratch_dir }}'
+export flight_dir='{{ flight_dir }}'
+export ortho_file='{{ ortho_file }}'
+
+cd "$flight_dir"
+
+module load apptainer || module load singularity
+APPT=$(command -v apptainer || command -v singularity)
+"$APPT" --version
+
+"$APPT" run --bind "$flight_dir","$tmp_dir" --writable-tmpfs \
+  {{ ortho_intel_sif_file }} "$ortho_file" "$flight_dir"

@@ -16,16 +16,15 @@ from config import config
 def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
     if process_name == 'odm':
         odm_sif_file = os.path.join(config['code_dir'], 'sif_files',
-                                    'odm_gpu.sif')
+                                    'odm_gpu-fixed.sif')
         lsfScript = os.path.join(flight_dir, 'odm_lsf.sh')
         with open(lsfScript, 'w') as file:
             file.write(f"""#!/bin/bash
         #BSUB -n 32
         ## requested job run time
-        #BSUB -W 30:00
-        #BSUB -q gpu
-        #BSUB -R "select[ a100 || a10 || a30 ]"
-        #BSUB -R "rusage[mem=250GB]"
+        #BSUB -W 2:00
+        #BSUB -q short_gpu
+        #BSUB -R "select[gpu] span[hosts=1] rusage[mem=250GB]"
         #BSUB -gpu "num=1:mode=shared:mps=no"
         ## Tag general output file and std error output
         #BSUB -o odm_processing-out.txt
@@ -36,11 +35,14 @@ def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
         mkdir -p $output_dir/code/images
         cp $images_dir/* $output_dir/code/images
         cd $output_dir
-        singularity run --bind $output_dir/code/images,$tmp_dir \
+        module load apptainer || module load singularity
+        APPT=$(command -v apptainer || command -v singularity)
+        "$APPT" --version
+        "$APPT" run --bind $output_dir/code/images,$tmp_dir \
         --writable-tmpfs --nv {odm_sif_file} --project-path $output_dir \
         --dtm --orthophoto-resolution 0.01 --smrf-threshold 0.4 \
         --smrf-window 24 --dsm --min-num-features 50000 --orthophoto-compression LZMA \
-        --feature-type sift --pc-quality ultra
+        --feature-type sift --pc-quality medium
         """)
 
     elif process_name == 'ortho_intel':
@@ -78,7 +80,7 @@ def processFlight(flight_id):
     flight_dir = os.path.join(config['mount_dir'], research_station, 'flights',
                               flight_id)
     # flight_dir = os.path.join(config['flights_dir'], flight_id)
-    if flight_metadata['num_files'] == utils.countFiles(flight_dir):
+    if flight_metadata['num_files'] == utils.countFiles(os.path.join(flight_dir,'images')):
         odm_script = generateLsfScript(flight_dir, flight_id, 'odm')
         utils.updateRecord(flight_dir, flight_id, 'processing')
         job_id = utils.lsfSubmitJob(odm_script, flight_dir)
@@ -177,14 +179,14 @@ def main():
     # adding midnight as hour,min,sec (full datetime object is needed for mongo)
     yesterday = datetime.combine(yesterday, datetime.min.time())
     today = datetime.combine(today, datetime.min.time())
-    query = {"upload_time": {"$lt": yesterday}}
+    query = {"upload_time": {"$lt": yesterday}, "research_station": "central"}
 
     results = db_collection.find(query)
     records_to_process = []
     for row in results:
         if 'status' not in row.keys():
             records_to_process.append(row['flight_id'])
-        elif row['status'] not in ['processed', 'processing', 'failed',
+        elif row['status'] not in ['processed', 'processing',
                                    'ortho generated']:
             records_to_process.append(row['flight_id'])
     if len(records_to_process) > 0:
