@@ -11,63 +11,8 @@ import json
 from datetime import datetime, timedelta
 import utils
 from config import config
-
-
-def generateLsfScript(flight_dir, flight_id, process_name, ortho_file=None):
-    if process_name == 'odm':
-        odm_sif_file = os.path.join(config['code_dir'], 'sif_files',
-                                    'odm_gpu-fixed.sif')
-        lsfScript = os.path.join(flight_dir, 'odm_lsf.sh')
-        with open(lsfScript, 'w') as file:
-            file.write(f"""#!/bin/bash
-        #BSUB -n 32
-        ## requested job run time
-        #BSUB -W 2:00
-        #BSUB -q short_gpu
-        #BSUB -R "select[gpu] span[hosts=1] rusage[mem=250GB]"
-        #BSUB -gpu "num=1:mode=shared:mps=no"
-        ## Tag general output file and std error output
-        #BSUB -o odm_processing-out.txt
-        #BSUB -e odm_processing-err.txt
-        export tmp_dir='{config['scratch_dir']}'
-        export output_dir='{flight_dir}'
-        export images_dir='{os.path.join(flight_dir, 'images')}'
-        mkdir -p $output_dir/code/images
-        cp $images_dir/* $output_dir/code/images
-        cd $output_dir
-        module load apptainer || module load singularity
-        APPT=$(command -v apptainer || command -v singularity)
-        "$APPT" --version
-        "$APPT" run --bind $output_dir/code/images,$tmp_dir \
-        --writable-tmpfs --nv {odm_sif_file} --project-path $output_dir \
-        --dtm --orthophoto-resolution 0.01 --smrf-threshold 0.4 \
-        --smrf-window 24 --dsm --min-num-features 50000 --orthophoto-compression LZMA \
-        --feature-type sift --pc-quality medium
-        """)
-
-    elif process_name == 'ortho_intel':
-        lsfScript = os.path.join(flight_dir, 'ortho_intel_lsf.sh')
-        ortho_intel_sif_file = os.path.join(config['code_dir'], 'sif_files',
-                                            'drone_ortho_intel.sif')
-        with open(lsfScript, 'w') as file:
-            file.write(f"""#!/bin/bash
-        #BSUB -n 32
-        ## requested job run time
-        #BSUB -W 5:00
-        #BSUB -q sif
-        #BSUB -R "select[avx2]"
-        ## Tag general output file and std error output
-        #BSUB -o ortho_intel-out.txt
-        #BSUB -e ortho_intel-err.txt
-        export tmp_dir={config['scratch_dir']}
-        export flight_dir={flight_dir}
-        export ortho_file={ortho_file}
-        cd $flight_dir
-        singularity run --bind $flight_dir,$tmp_dir --writable-tmpfs \
-        {ortho_intel_sif_file} $ortho_file $flight_dir""")
-    else:
-        lsfScript = None
-    return lsfScript
+from services.scripts import write_odm_script, write_ortho_intel_script
+import os
 
 
 def processFlight(flight_id):
@@ -81,9 +26,25 @@ def processFlight(flight_id):
                               flight_id)
     # flight_dir = os.path.join(config['flights_dir'], flight_id)
     if flight_metadata['num_files'] == utils.countFiles(os.path.join(flight_dir,'images')):
-        odm_script = generateLsfScript(flight_dir, flight_id, 'odm')
         utils.updateRecord(flight_dir, flight_id, 'processing')
-        job_id = utils.lsfSubmitJob(odm_script, flight_dir)
+
+        # write the odm script to flight dir
+        odm_sif = os.path.join(config['code_dir'], 'sif_files', 'odm_gpu-fixed.sif')
+        odm_script_path = os.path.join(flight_dir, 'odm_lsf.sh')
+        write_odm_script(
+            flight_dir=flight_dir,
+            images_dir=os.path.join(flight_dir, 'images'),
+            scratch_dir=config['scratch_dir'],
+            odm_sif_file=odm_sif,
+            script_path=odm_script_path,
+            n_cores=32,
+            wall="30:00",
+            queue="gpu",
+            mem_gb=250,
+            pc_quality="medium",
+        )
+
+        job_id = utils.lsfSubmitJob(odm_script_path, flight_dir)
         logging.info({
             'service': 'processFlight',
             'message': f'{flight_id} - odm job submitted - {job_id}'
@@ -126,12 +87,23 @@ def processFlight(flight_id):
                         os.rename(item_path, dest_path)
                 shutil.rmtree(code_dir)
                 utils.updateRecord(flight_dir, flight_id, 'ortho generated')
-                ortho_file = os.path.join(flight_dir, 'odm_orthophoto',
-                                          'odm_orthophoto.tif')
-                ortho_intel_script = generateLsfScript(flight_dir, flight_id,
-                                                       'ortho_intel',
-                                                       ortho_file)
-                job_id = utils.lsfSubmitJob(ortho_intel_script, flight_dir)
+
+                # generate ortho sif script
+                oi_sif = os.path.join(config['code_dir'], 'sif_files', 'drone_ortho_intel.sif')
+                oi_script_path = os.path.join(flight_dir, 'ortho_intel_lsf.sh')
+                ortho_file = os.path.join(flight_dir, 'odm_orthophoto', 'odm_orthophoto.tif')
+                write_ortho_intel_script(
+                    flight_dir=flight_dir,
+                    scratch_dir=config['scratch_dir'],
+                    ortho_intel_sif_file=oi_sif,
+                    ortho_file=ortho_file,
+                    script_path=oi_script_path,
+                    n_cores=32,
+                    wall="5:00",
+                    queue="short",
+                )
+
+                job_id = utils.lsfSubmitJob(oi_script_path, flight_dir)
                 logging.info({
                     'service': 'processFlight',
                     'message': f'{flight_id} - ortho intel job submitted -'
