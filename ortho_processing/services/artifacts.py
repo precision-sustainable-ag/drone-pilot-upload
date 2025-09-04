@@ -2,6 +2,7 @@ import os
 import json
 import logging
 from .fs import exists_nonempty, dir_exists_nonempty, safe_move_tree
+from typing import Optional
 
 def load_json(path: str):
     try:
@@ -10,7 +11,7 @@ def load_json(path: str):
     except Exception:
         return None
 
-def has_orthophoto(fdir: str) -> str|None:
+def has_orthophoto(fdir: str) -> Optional[str]:
     p1 = os.path.join(fdir, "odm_orthophoto", "odm_orthophoto.tif")
     p2 = os.path.join(fdir, "code", "odm_orthophoto", "odm_orthophoto.tif")
     if exists_nonempty(p1):
