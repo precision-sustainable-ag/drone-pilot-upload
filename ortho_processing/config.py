@@ -14,6 +14,23 @@ config = {
     'log_file': '/home/hpc.drone.svc/ondemand/data/drone-pilot-upload/cron_log.json',
     'python_exec': '/usr/local/usrapps/drones/drone-pilot-upload/backend/venv/bin/python3',
     'scratch_dir': '/share/drones/hpc.drone.svc/tmp',
+    # ODM job defaults
+
+    "odm": {
+        "queue": "short_gpu",
+        "n_cores": 32,
+        "wall": "2:00",
+        "mem_gb": 250,
+        "pc_quality": "medium",
+        "sif_file": "sif_files/odm_gpu-fixed.sif",
+    },
+    # Ortho Intel job defaults
+    "ortho_intel": {
+        "queue": "serial",
+        "n_cores": 1,
+        "wall": "10:00",
+        "sif_file": "sif_files/drone_ortho_intel.sif",
+    },
     'database_details': {
         'host': 'drone-pilot-test.bsgdbxt.mongodb.net',
         'username': 'mspinega',

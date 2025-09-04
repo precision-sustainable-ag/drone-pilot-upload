@@ -2097,3 +2097,145 @@ NameError: name 'db' is not defined
 2025-09-03 11:12:19,116 - ERROR - f250bb09-84b4-4807-82b2-ba66e48f0506: file count mismatch (expected 196, found 154)
 2025-09-03 11:12:19,400 - ERROR - 7902133d-e090-4493-bdda-2c73d3fe7ca6: file count mismatch (expected 3493, found 3472)
 2025-09-03 11:12:19,894 - INFO - Reconciled 80 flights (station=central)
+2025-09-03 15:22:03,835 - INFO - finalize: removing empty code dir
+2025-09-03 15:22:03,835 - INFO - [dry-run] DB set d1a0c0e4-2618-4af2-940e-111a299f5cb5: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 3, 19, 22, 3, 835776, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-03 15:22:03,871 - INFO - [dry-run] DB set 4a7c07e4-6ee4-4670-a198-f3de1af6e7f5: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 3, 19, 22, 3, 871430, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-03 15:22:03,871 - INFO - [dry-run] DB set 4a7c07e4-6ee4-4670-a198-f3de1af6e7f5: status=processed
+2025-09-03 15:22:03,871 - INFO - 4a7c07e4-6ee4-4670-a198-f3de1af6e7f5: status ortho generated -> processed
+2025-09-03 15:22:04,367 - ERROR - d8555f14-7217-463b-8029-93b78420eb51: file count mismatch (expected 397, found 405)
+2025-09-03 15:22:04,368 - INFO - [dry-run] DB set d8555f14-7217-463b-8029-93b78420eb51: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 397, found 405)'}
+2025-09-03 15:22:04,368 - INFO - [dry-run] DB set d8555f14-7217-463b-8029-93b78420eb51: status=file count mismatch
+2025-09-03 15:22:05,066 - ERROR - 77599c20-29b7-4158-900a-5694e7e31db8: file count mismatch (expected 868, found 854)
+2025-09-03 15:22:05,067 - INFO - [dry-run] DB set 77599c20-29b7-4158-900a-5694e7e31db8: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 868, found 854)'}
+2025-09-03 15:22:05,067 - INFO - [dry-run] DB set 77599c20-29b7-4158-900a-5694e7e31db8: status=file count mismatch
+2025-09-03 15:22:05,318 - ERROR - 09800191-5e5b-4504-a7ed-a19640d33a24: file count mismatch (expected 448, found 427)
+2025-09-03 15:22:05,319 - INFO - [dry-run] DB set 09800191-5e5b-4504-a7ed-a19640d33a24: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 448, found 427)'}
+2025-09-03 15:22:05,319 - INFO - [dry-run] DB set 09800191-5e5b-4504-a7ed-a19640d33a24: status=file count mismatch
+2025-09-03 15:22:05,506 - ERROR - 9a7cb4aa-68de-4331-befa-4901d5db9417: file count mismatch (expected 4284, found 4263)
+2025-09-03 15:22:05,506 - INFO - [dry-run] DB set 9a7cb4aa-68de-4331-befa-4901d5db9417: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 4284, found 4263)'}
+2025-09-03 15:22:05,506 - INFO - [dry-run] DB set 9a7cb4aa-68de-4331-befa-4901d5db9417: status=file count mismatch
+2025-09-03 15:22:05,747 - INFO - finalize: moving code/odm_georeferencing -> odm_georeferencing
+2025-09-03 15:22:05,748 - INFO - finalize: moving code/img_list.txt -> img_list.txt
+2025-09-03 15:22:05,748 - INFO - finalize: moving code/images.json -> images.json
+2025-09-03 15:22:05,749 - INFO - finalize: moving code/benchmark.txt -> benchmark.txt
+2025-09-03 15:22:05,749 - INFO - finalize: moving code/opensfm -> opensfm
+2025-09-03 15:22:05,750 - INFO - finalize: moving code/cameras.json -> cameras.json
+2025-09-03 15:22:05,750 - INFO - finalize: moving code/odm_filterpoints -> odm_filterpoints
+2025-09-03 15:22:05,751 - INFO - finalize: moving code/odm_meshing -> odm_meshing
+2025-09-03 15:22:05,751 - INFO - finalize: moving code/odm_texturing -> odm_texturing
+2025-09-03 15:22:05,752 - INFO - finalize: moving code/odm_texturing_25d -> odm_texturing_25d
+2025-09-03 15:22:05,752 - INFO - finalize: moving code/odm_dem -> odm_dem
+2025-09-03 15:22:05,752 - INFO - finalize: moving code/odm_orthophoto -> odm_orthophoto
+2025-09-03 15:22:05,753 - INFO - finalize: moving code/odm_report -> odm_report
+2025-09-03 15:22:05,753 - INFO - finalize: moving code/log.json -> log.json
+2025-09-03 15:22:05,754 - INFO - finalize: moving code/options.json -> options.json
+2025-09-03 15:22:05,754 - INFO - [dry-run] DB set 8520c3b2-0bb3-4615-a57c-b3e2f31f06bc: {'stages.odm.state': 'succeeded', 'stages.odm.ended_at': datetime.datetime(2025, 9, 3, 19, 22, 5, 754539, tzinfo=datetime.timezone.utc), 'stages.odm.message': 'log.json success=true (code/log.json)'}
+2025-09-03 15:22:05,754 - INFO - [dry-run] DB set 8520c3b2-0bb3-4615-a57c-b3e2f31f06bc: status=ortho generated
+2025-09-03 15:22:05,754 - INFO - 8520c3b2-0bb3-4615-a57c-b3e2f31f06bc: status processing -> ortho generated
+2025-09-03 15:22:06,374 - ERROR - 54ee29ef-482e-4c07-aa08-a496024ce886: file count mismatch (expected 2051, found 2044)
+2025-09-03 15:22:06,374 - INFO - [dry-run] DB set 54ee29ef-482e-4c07-aa08-a496024ce886: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 2051, found 2044)'}
+2025-09-03 15:22:06,374 - INFO - [dry-run] DB set 54ee29ef-482e-4c07-aa08-a496024ce886: status=file count mismatch
+2025-09-03 15:22:07,130 - ERROR - f250bb09-84b4-4807-82b2-ba66e48f0506: file count mismatch (expected 196, found 154)
+2025-09-03 15:22:07,130 - INFO - [dry-run] DB set f250bb09-84b4-4807-82b2-ba66e48f0506: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 196, found 154)'}
+2025-09-03 15:22:07,130 - INFO - [dry-run] DB set f250bb09-84b4-4807-82b2-ba66e48f0506: status=file count mismatch
+2025-09-03 15:22:07,796 - ERROR - 7902133d-e090-4493-bdda-2c73d3fe7ca6: file count mismatch (expected 3493, found 3472)
+2025-09-03 15:22:07,796 - INFO - [dry-run] DB set 7902133d-e090-4493-bdda-2c73d3fe7ca6: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 3493, found 3472)'}
+2025-09-03 15:22:07,797 - INFO - [dry-run] DB set 7902133d-e090-4493-bdda-2c73d3fe7ca6: status=file count mismatch
+2025-09-03 15:22:11,899 - INFO - Reconciled 80 flights (station=central)
+2025-09-03 15:22:21,961 - INFO - finalize: removing empty code dir
+2025-09-03 15:22:22,487 - INFO - 4a7c07e4-6ee4-4670-a198-f3de1af6e7f5: status ortho generated -> processed
+2025-09-03 15:22:22,500 - ERROR - d8555f14-7217-463b-8029-93b78420eb51: file count mismatch (expected 397, found 405)
+2025-09-03 15:22:22,784 - ERROR - 77599c20-29b7-4158-900a-5694e7e31db8: file count mismatch (expected 868, found 854)
+2025-09-03 15:22:23,039 - ERROR - 09800191-5e5b-4504-a7ed-a19640d33a24: file count mismatch (expected 448, found 427)
+2025-09-03 15:22:23,299 - ERROR - 9a7cb4aa-68de-4331-befa-4901d5db9417: file count mismatch (expected 4284, found 4263)
+2025-09-03 15:22:23,568 - INFO - finalize: moving code/odm_georeferencing -> odm_georeferencing
+2025-09-03 15:22:23,578 - INFO - finalize: moving code/img_list.txt -> img_list.txt
+2025-09-03 15:22:23,579 - INFO - finalize: moving code/images.json -> images.json
+2025-09-03 15:22:23,580 - INFO - finalize: moving code/benchmark.txt -> benchmark.txt
+2025-09-03 15:22:23,581 - INFO - finalize: moving code/opensfm -> opensfm
+2025-09-03 15:22:23,587 - INFO - finalize: moving code/cameras.json -> cameras.json
+2025-09-03 15:22:23,588 - INFO - finalize: moving code/odm_filterpoints -> odm_filterpoints
+2025-09-03 15:22:23,605 - INFO - finalize: moving code/odm_meshing -> odm_meshing
+2025-09-03 15:22:23,606 - INFO - finalize: moving code/odm_texturing -> odm_texturing
+2025-09-03 15:22:23,620 - INFO - finalize: moving code/odm_texturing_25d -> odm_texturing_25d
+2025-09-03 15:22:23,642 - INFO - finalize: moving code/odm_dem -> odm_dem
+2025-09-03 15:22:23,662 - INFO - finalize: moving code/odm_orthophoto -> odm_orthophoto
+2025-09-03 15:22:23,680 - INFO - finalize: moving code/odm_report -> odm_report
+2025-09-03 15:22:23,691 - INFO - finalize: moving code/log.json -> log.json
+2025-09-03 15:22:23,693 - INFO - finalize: moving code/options.json -> options.json
+2025-09-03 15:22:23,694 - INFO - finalize: removing empty code dir
+2025-09-03 15:22:25,179 - INFO - 8520c3b2-0bb3-4615-a57c-b3e2f31f06bc: status processing -> ortho generated
+2025-09-03 15:22:25,190 - ERROR - 54ee29ef-482e-4c07-aa08-a496024ce886: file count mismatch (expected 2051, found 2044)
+2025-09-03 15:22:25,463 - ERROR - f250bb09-84b4-4807-82b2-ba66e48f0506: file count mismatch (expected 196, found 154)
+2025-09-03 15:22:25,744 - ERROR - 7902133d-e090-4493-bdda-2c73d3fe7ca6: file count mismatch (expected 3493, found 3472)
+2025-09-03 15:22:26,121 - INFO - Reconciled 80 flights (station=central)
+2025-09-04 09:14:10,111 - INFO - [dry-run] DB set 354c2436-9044-4d47-85f0-40e59ea46a48: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 4, 13, 14, 10, 111057, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-04 09:14:10,111 - INFO - [dry-run] DB set 354c2436-9044-4d47-85f0-40e59ea46a48: status=processed
+2025-09-04 09:14:10,111 - INFO - 354c2436-9044-4d47-85f0-40e59ea46a48: status ortho generated -> processed
+2025-09-04 09:14:10,417 - INFO - [dry-run] DB set 0a22391a-c4be-4e84-baf6-10b162d075f5: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 4, 13, 14, 10, 417502, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-04 09:14:10,417 - INFO - [dry-run] DB set 0a22391a-c4be-4e84-baf6-10b162d075f5: status=processed
+2025-09-04 09:14:10,417 - INFO - 0a22391a-c4be-4e84-baf6-10b162d075f5: status ortho generated -> processed
+2025-09-04 09:14:10,481 - ERROR - d8555f14-7217-463b-8029-93b78420eb51: file count mismatch (expected 397, found 405)
+2025-09-04 09:14:10,481 - INFO - [dry-run] DB set d8555f14-7217-463b-8029-93b78420eb51: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 397, found 405)'}
+2025-09-04 09:14:10,482 - INFO - [dry-run] DB set d8555f14-7217-463b-8029-93b78420eb51: status=file count mismatch
+2025-09-04 09:14:10,675 - INFO - [dry-run] DB set c923b9a4-116d-4085-8c6f-8684e8353f22: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 4, 13, 14, 10, 675501, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-04 09:14:10,675 - INFO - [dry-run] DB set c923b9a4-116d-4085-8c6f-8684e8353f22: status=processed
+2025-09-04 09:14:10,675 - INFO - c923b9a4-116d-4085-8c6f-8684e8353f22: status ortho generated -> processed
+2025-09-04 09:14:10,824 - INFO - [dry-run] DB set 1ee1ff3a-1539-401c-bc62-cc321bf77578: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 4, 13, 14, 10, 824896, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-04 09:14:10,825 - INFO - [dry-run] DB set 1ee1ff3a-1539-401c-bc62-cc321bf77578: status=processed
+2025-09-04 09:14:10,825 - INFO - 1ee1ff3a-1539-401c-bc62-cc321bf77578: status ortho generated -> processed
+2025-09-04 09:14:11,062 - INFO - [dry-run] DB set 982f4343-b244-4712-abe7-3edd650020cc: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 4, 13, 14, 11, 62621, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-04 09:14:11,062 - INFO - [dry-run] DB set 982f4343-b244-4712-abe7-3edd650020cc: status=processed
+2025-09-04 09:14:11,062 - INFO - 982f4343-b244-4712-abe7-3edd650020cc: status ortho generated -> processed
+2025-09-04 09:14:11,536 - INFO - [dry-run] DB set f5a776df-8b43-45cc-b237-aae16b5813ef: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 4, 13, 14, 11, 536040, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-04 09:14:11,536 - INFO - [dry-run] DB set f5a776df-8b43-45cc-b237-aae16b5813ef: status=processed
+2025-09-04 09:14:11,536 - INFO - f5a776df-8b43-45cc-b237-aae16b5813ef: status ortho generated -> processed
+2025-09-04 09:14:11,801 - ERROR - 77599c20-29b7-4158-900a-5694e7e31db8: file count mismatch (expected 868, found 854)
+2025-09-04 09:14:11,802 - INFO - [dry-run] DB set 77599c20-29b7-4158-900a-5694e7e31db8: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 868, found 854)'}
+2025-09-04 09:14:11,802 - INFO - [dry-run] DB set 77599c20-29b7-4158-900a-5694e7e31db8: status=file count mismatch
+2025-09-04 09:14:12,075 - ERROR - 09800191-5e5b-4504-a7ed-a19640d33a24: file count mismatch (expected 448, found 427)
+2025-09-04 09:14:12,075 - INFO - [dry-run] DB set 09800191-5e5b-4504-a7ed-a19640d33a24: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 448, found 427)'}
+2025-09-04 09:14:12,075 - INFO - [dry-run] DB set 09800191-5e5b-4504-a7ed-a19640d33a24: status=file count mismatch
+2025-09-04 09:14:12,368 - ERROR - 9a7cb4aa-68de-4331-befa-4901d5db9417: file count mismatch (expected 4284, found 4263)
+2025-09-04 09:14:12,369 - INFO - [dry-run] DB set 9a7cb4aa-68de-4331-befa-4901d5db9417: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 4284, found 4263)'}
+2025-09-04 09:14:12,369 - INFO - [dry-run] DB set 9a7cb4aa-68de-4331-befa-4901d5db9417: status=file count mismatch
+2025-09-04 09:14:12,608 - INFO - [dry-run] DB set 0e5339c3-c02d-4f94-a0ac-1f84a87b6496: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 4, 13, 14, 12, 608665, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-04 09:14:12,608 - INFO - [dry-run] DB set 0e5339c3-c02d-4f94-a0ac-1f84a87b6496: status=processed
+2025-09-04 09:14:12,608 - INFO - 0e5339c3-c02d-4f94-a0ac-1f84a87b6496: status ortho generated -> processed
+2025-09-04 09:14:12,849 - INFO - [dry-run] DB set 8520c3b2-0bb3-4615-a57c-b3e2f31f06bc: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 4, 13, 14, 12, 849184, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-04 09:14:12,849 - INFO - [dry-run] DB set 8520c3b2-0bb3-4615-a57c-b3e2f31f06bc: status=processed
+2025-09-04 09:14:12,849 - INFO - 8520c3b2-0bb3-4615-a57c-b3e2f31f06bc: status ortho generated -> processed
+2025-09-04 09:14:13,205 - INFO - [dry-run] DB set 26bbdafa-fc12-443c-9fe5-2f584565e023: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 4, 13, 14, 13, 205330, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-04 09:14:13,205 - INFO - [dry-run] DB set 26bbdafa-fc12-443c-9fe5-2f584565e023: status=processed
+2025-09-04 09:14:13,205 - INFO - 26bbdafa-fc12-443c-9fe5-2f584565e023: status ortho generated -> processed
+2025-09-04 09:14:13,529 - ERROR - 54ee29ef-482e-4c07-aa08-a496024ce886: file count mismatch (expected 2051, found 2044)
+2025-09-04 09:14:13,530 - INFO - [dry-run] DB set 54ee29ef-482e-4c07-aa08-a496024ce886: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 2051, found 2044)'}
+2025-09-04 09:14:13,530 - INFO - [dry-run] DB set 54ee29ef-482e-4c07-aa08-a496024ce886: status=file count mismatch
+2025-09-04 09:14:13,832 - INFO - [dry-run] DB set db7f5403-0958-4e66-8400-679c25930f6e: {'stages.ortho_intel.state': 'succeeded', 'stages.ortho_intel.ended_at': datetime.datetime(2025, 9, 4, 13, 14, 13, 832882, tzinfo=datetime.timezone.utc), 'stages.ortho_intel.message': 'veg_indices raster present (vari_image.tif)'}
+2025-09-04 09:14:13,833 - INFO - [dry-run] DB set db7f5403-0958-4e66-8400-679c25930f6e: status=processed
+2025-09-04 09:14:13,833 - INFO - db7f5403-0958-4e66-8400-679c25930f6e: status ortho generated -> processed
+2025-09-04 09:14:14,372 - ERROR - f250bb09-84b4-4807-82b2-ba66e48f0506: file count mismatch (expected 196, found 154)
+2025-09-04 09:14:14,372 - INFO - [dry-run] DB set f250bb09-84b4-4807-82b2-ba66e48f0506: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 196, found 154)'}
+2025-09-04 09:14:14,372 - INFO - [dry-run] DB set f250bb09-84b4-4807-82b2-ba66e48f0506: status=file count mismatch
+2025-09-04 09:14:15,486 - ERROR - 7902133d-e090-4493-bdda-2c73d3fe7ca6: file count mismatch (expected 3493, found 3472)
+2025-09-04 09:14:15,486 - INFO - [dry-run] DB set 7902133d-e090-4493-bdda-2c73d3fe7ca6: {'stages.odm.state': 'blocked', 'stages.odm.message': 'file count mismatch (expected 3493, found 3472)'}
+2025-09-04 09:14:15,487 - INFO - [dry-run] DB set 7902133d-e090-4493-bdda-2c73d3fe7ca6: status=file count mismatch
+2025-09-04 09:14:22,446 - INFO - Reconciled 80 flights (station=central)
+2025-09-04 09:15:26,699 - INFO - 354c2436-9044-4d47-85f0-40e59ea46a48: status ortho generated -> processed
+2025-09-04 09:15:26,987 - INFO - 0a22391a-c4be-4e84-baf6-10b162d075f5: status ortho generated -> processed
+2025-09-04 09:15:26,988 - ERROR - d8555f14-7217-463b-8029-93b78420eb51: file count mismatch (expected 397, found 405)
+2025-09-04 09:15:27,545 - INFO - c923b9a4-116d-4085-8c6f-8684e8353f22: status ortho generated -> processed
+2025-09-04 09:15:27,830 - INFO - 1ee1ff3a-1539-401c-bc62-cc321bf77578: status ortho generated -> processed
+2025-09-04 09:15:28,120 - INFO - 982f4343-b244-4712-abe7-3edd650020cc: status ortho generated -> processed
+2025-09-04 09:15:28,407 - INFO - f5a776df-8b43-45cc-b237-aae16b5813ef: status ortho generated -> processed
+2025-09-04 09:15:28,414 - ERROR - 77599c20-29b7-4158-900a-5694e7e31db8: file count mismatch (expected 868, found 854)
+2025-09-04 09:15:28,688 - ERROR - 09800191-5e5b-4504-a7ed-a19640d33a24: file count mismatch (expected 448, found 427)
+2025-09-04 09:15:28,962 - ERROR - 9a7cb4aa-68de-4331-befa-4901d5db9417: file count mismatch (expected 4284, found 4263)
+2025-09-04 09:15:29,531 - INFO - 0e5339c3-c02d-4f94-a0ac-1f84a87b6496: status ortho generated -> processed
+2025-09-04 09:15:29,816 - INFO - 8520c3b2-0bb3-4615-a57c-b3e2f31f06bc: status ortho generated -> processed
+2025-09-04 09:15:30,102 - INFO - 26bbdafa-fc12-443c-9fe5-2f584565e023: status ortho generated -> processed
+2025-09-04 09:15:30,112 - ERROR - 54ee29ef-482e-4c07-aa08-a496024ce886: file count mismatch (expected 2051, found 2044)
+2025-09-04 09:15:30,690 - INFO - db7f5403-0958-4e66-8400-679c25930f6e: status ortho generated -> processed
+2025-09-04 09:15:30,702 - ERROR - f250bb09-84b4-4807-82b2-ba66e48f0506: file count mismatch (expected 196, found 154)
+2025-09-04 09:15:30,988 - ERROR - 7902133d-e090-4493-bdda-2c73d3fe7ca6: file count mismatch (expected 3493, found 3472)
+2025-09-04 09:15:31,452 - INFO - Reconciled 80 flights (station=central)
