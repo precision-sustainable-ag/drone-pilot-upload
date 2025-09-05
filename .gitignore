@@ -45,3 +45,4 @@ ortho_processing/__pycache__/
 
 logs/*
 sif_files/*
+ortho_processing/config.py
