@@ -1,5 +1,6 @@
 import os
 import shutil
+from config import config
 
 def count_files(path: str) -> int:
     try:
@@ -28,3 +29,9 @@ def safe_move_tree(src: str, dst: str) -> None:
     except OSError:
         shutil.copytree(src, dst, dirs_exist_ok=True)
         shutil.rmtree(src, ignore_errors=True)
+
+def flight_dir_for(meta):
+    """Resolve flight directory from metadata."""
+    rs = meta["research_station"]
+    fid = meta["flight_id"]
+    return os.path.join(config["mount_dir"], rs, "flights", fid)

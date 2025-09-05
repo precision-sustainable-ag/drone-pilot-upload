@@ -9,26 +9,12 @@ from config import config
 def utcnow():
     return datetime.now(timezone.utc)
 
-def flight_dir_for(meta) -> str:
-    rs = meta["research_station"]
-    fid = meta["flight_id"]
-    return os.path.join(config["mount_dir"], rs, "flights", fid)
-
 def set_stage(db, fid: str, stage: str, updates: dict, dry_run: bool=False) -> None:
     path = f"stages.{stage}"
     payload = {f"{path}.{k}": v for k, v in updates.items()}
     if dry_run:
         return
     db.update_one({"flight_id": fid}, {"$set": payload})
-
-def recompute_overall(odm_state: str, oi_state: str, overall_prev: Optional[str]) -> str:
-    if oi_state == "succeeded":
-        return "processed"
-    if odm_state == "succeeded" and oi_state != "failed":
-        return "ortho generated"
-    if overall_prev == "failed" and oi_state != "succeeded" and odm_state != "succeeded":
-        return "failed"
-    return overall_prev or "processing"
 
 def update_record(flight_dir: str, flight_id: str, status: str, research_station: Optional[str] = None):
     client, col = connect_db()
