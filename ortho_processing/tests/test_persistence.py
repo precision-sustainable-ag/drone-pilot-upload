@@ -1,8 +1,8 @@
 # tests/test_records.py
-import json
 from services.persistence import update_record
 
-def test_update_record_processed(monkeypatch, make_flight, patch_config, fake_db):
+
+def test_update_record_processed(monkeypatch, make_flight, fake_db):
     f = make_flight("R1", station="central")
     # write minimal CRS file
     (f / "odm_georeferencing").mkdir()
@@ -10,6 +10,7 @@ def test_update_record_processed(monkeypatch, make_flight, patch_config, fake_db
 
     # Patch connect_db used by records.update_record to return our fake collection
     from services import persistence as rec_mod
+
     monkeypatch.setattr(rec_mod, "connect_db", lambda: (object(), fake_db))
 
     update_record(str(f), "R1", "processed", "central")
@@ -20,12 +21,14 @@ def test_update_record_processed(monkeypatch, make_flight, patch_config, fake_db
     assert doc["orthophoto_path"].endswith("central/flights/R1/odm_orthophoto/odm_orthophoto.tif")
     assert doc["orthophoto_source_crs"] == "EPSG:4326"
 
-def test_update_record_ortho_generated(monkeypatch, make_flight, patch_config, fake_db):
+
+def test_update_record_ortho_generated(monkeypatch, make_flight, fake_db):
     f = make_flight("R2", station="central")
     (f / "odm_georeferencing").mkdir()
     (f / "odm_georeferencing" / "proj.txt").write_text("EPSG:32617")
 
     from services import persistence as rec_mod
+
     monkeypatch.setattr(rec_mod, "connect_db", lambda: (object(), fake_db))
 
     update_record(str(f), "R2", "ortho generated", "central")
@@ -33,11 +36,13 @@ def test_update_record_ortho_generated(monkeypatch, make_flight, patch_config, f
     assert doc["status"] == "ortho generated"
     assert doc["orthophoto_path"].endswith("central/flights/R2/odm_orthophoto/odm_orthophoto.tif")
 
-def test_set_overall_status_dry_run_skips_update(monkeypatch, fake_db):
+
+def test_set_overall_status_dry_run_skips_update(monkeypatch):
     from services import persistence as rec
+
     calls = {"count": 0}
 
-    def spy_update_record(*args, **kwargs):
+    def spy_update_record(*_args, **_kwargs):
         calls["count"] += 1
 
     monkeypatch.setattr(rec, "update_record", spy_update_record)

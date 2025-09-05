@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 import os
-import sys
 import re
+import sys
+
 
 def parse_runtime(out_file):
     """Return runtime in hours if job completed successfully, else None."""
     runtime = None
     success = False
-    with open(out_file, "r") as f:
+    with open(out_file) as f:
         for line in f:
             if "Successfully completed" in line:
                 success = True
@@ -16,6 +17,7 @@ def parse_runtime(out_file):
                 runtime = int(m.group(1)) / 3600.0  # convert sec → hours
     return runtime if success and runtime is not None else None
 
+
 def parse_max_memory(out_path):
     """
     Parse 'Max Memory :' from an LSF summary line.
@@ -23,7 +25,7 @@ def parse_max_memory(out_path):
     also tries to normalize MB→GB when possible.
     """
     try:
-        with open(out_path, 'r', errors='ignore') as f:
+        with open(out_path, errors="ignore") as f:
             for raw in f:
                 line = raw.strip()
                 if line.lower().startswith("max memory"):
@@ -61,12 +63,14 @@ def parse_max_memory(out_path):
         pass
     return None
 
+
 def count_images(flight_dir):
     """Count number of files in images/ dir."""
     img_dir = os.path.join(flight_dir, "images")
     if not os.path.isdir(img_dir):
         return 0
     return sum(1 for _ in os.scandir(img_dir) if _.is_file())
+
 
 def main():
     if len(sys.argv) < 2:
@@ -80,7 +84,7 @@ def main():
         print(f"Station path not found: {base}")
         sys.exit(1)
 
-    for root, dirs, files in os.walk(base):
+    for root, _dirs, files in os.walk(base):
         if "odm_processing-out.txt" in files:
             out_file = os.path.join(root, "odm_processing-out.txt")
             # If the out file lives under .../flights/<id>/code/, hop up one to the flight dir.
@@ -93,6 +97,7 @@ def main():
                 images = count_images(flight_dir)
 
                 print(f"{flight_id}\t{runtime:.2f}\t{max_mem or 'NA'}\t{images}")
+
 
 if __name__ == "__main__":
     main()

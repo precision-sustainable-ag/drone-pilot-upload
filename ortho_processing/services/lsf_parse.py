@@ -1,15 +1,15 @@
 # services/lsf_parse.py
 from __future__ import annotations
-from typing import Optional, Tuple, List
+
 import os
 
 SUCCESS_LINE = "successfully completed."
 
 # Things we only trust if they appear at the *end* of the file
 FAIL_LINE_PREFIXES = (
-    "exited with exit code",          # generic EXIT footer
-    "term_",                          # TERM_RUNLIMIT, TERM_OUT_OF_MEMORY, etc.
-    "job was terminated",             # admin/user termination
+    "exited with exit code",  # generic EXIT footer
+    "term_",  # TERM_RUNLIMIT, TERM_OUT_OF_MEMORY, etc.
+    "job was terminated",  # admin/user termination
 )
 
 # Strong failure phrases we accept at tail even without the LSF footer
@@ -22,26 +22,29 @@ FAIL_LINE_SNIPPETS = (
     "no such file or directory",
 )
 
-def _tail_lines(path: str, n: int) -> List[str]:
+
+def _tail_lines(path: str, n: int) -> list[str]:
     try:
-        with open(path, "r", errors="ignore") as f:
+        with open(path, errors="ignore") as f:
             lines = f.read().splitlines()
         return lines[-n:]
     except Exception:
         return []
 
-def tail_lines(paths: list[str], n: int = 50) -> List[str]:
+
+def tail_lines(paths: list[str], n: int = 50) -> list[str]:
     """Read last n lines from multiple files, concatenated in mtime order (newest last)."""
     existing = [(p, os.path.getmtime(p)) for p in paths if os.path.isfile(p)]
     if not existing:
         return []
     # sort by mtime ascending so the newest file tail ends up last
     existing.sort(key=lambda x: x[1])
-    out: List[str] = []
+    out: list[str] = []
     for p, _ in existing:
         out.extend(_tail_lines(p, n))
     # keep only the last n overall to stay bounded
     return out[-n:]
+
 
 def lsf_terminal_status(out_path, err_path, tail_len=50):
     # get tails and mtimes separately
@@ -53,9 +56,9 @@ def lsf_terminal_status(out_path, err_path, tail_len=50):
     # 1) Trust OUT for terminal markers (authoritative)
     for s in reversed(out_tail):
         low = s.strip().lower()
-        if not low: 
+        if not low:
             continue
-        if low == SUCCESS_LINE:                      # "successfully completed."
+        if low == SUCCESS_LINE:  # "successfully completed."
             return "succeeded", "LSF footer: Successfully completed."
         if any(low.startswith(p) for p in FAIL_LINE_PREFIXES):
             return "failed", f"LSF tail: {s.strip()}"

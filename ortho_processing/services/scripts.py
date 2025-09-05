@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import os
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+
 from config import config
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "..", "templates")
 
@@ -12,9 +14,11 @@ _env = Environment(
     lstrip_blocks=True,
 )
 
+
 def _render(template_name: str, **ctx) -> str:
     tpl = _env.get_template(template_name)
     return tpl.render(**ctx)
+
 
 def write_odm_script(*, flight_dir: str, images_dir: str, script_path: str) -> str:
     """Render and write the ODM LSF script; return the path written."""
@@ -37,6 +41,7 @@ def write_odm_script(*, flight_dir: str, images_dir: str, script_path: str) -> s
         f.write(content)
     os.chmod(script_path, 0o755)
     return script_path
+
 
 def write_ortho_intel_script(*, flight_dir: str, ortho_file: str, script_path: str) -> str:
     """Render and write the ortho_intel LSF script; return the path written."""
