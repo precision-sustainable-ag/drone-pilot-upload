@@ -1,8 +1,8 @@
 # tests/test_scripts.py
-from pathlib import Path
 from services.scripts import write_odm_script, write_ortho_intel_script
 
-def test_write_odm_script_writes_bsub_script(make_flight, patch_config):
+
+def test_write_odm_script_writes_bsub_script(make_flight):
     f = make_flight("SF1")
     script = f / "odm_lsf.sh"
     write_odm_script(
@@ -15,7 +15,8 @@ def test_write_odm_script_writes_bsub_script(make_flight, patch_config):
     assert "--project-path" in text
     assert "odm_gpu-fixed.sif" in text
 
-def test_write_ortho_intel_script_writes_bsub_script(make_flight, patch_config):
+
+def test_write_ortho_intel_script_writes_bsub_script(make_flight):
     f = make_flight("SF2")
     script = f / "ortho_intel_lsf.sh"
     write_ortho_intel_script(

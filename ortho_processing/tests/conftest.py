@@ -1,14 +1,13 @@
 # tests/conftest.py
 import json
-import os
-import shutil
 import types
+
 import pytest
 from config import config
 
 
 @pytest.fixture
-def patch_config(tmp_path, monkeypatch):
+def patch_config(tmp_path):
     """Point config at temporary locations and set defaults used by writers."""
     mount = tmp_path / "mount"
     scratch = tmp_path / "scratch"
@@ -30,15 +29,18 @@ def patch_config(tmp_path, monkeypatch):
 
     # Optional knobs some writers may read
     config.setdefault("queues", {"odm": "short_gpu", "ortho_intel": "short"})
-    config.setdefault("odm",   {"n_cores": 32, "wall": "30:00", "mem_gb": 250, "pc_quality": "medium"})
+    config.setdefault(
+        "odm", {"n_cores": 32, "wall": "30:00", "mem_gb": 250, "pc_quality": "medium"}
+    )
     config.setdefault("ortho_intel", {"n_cores": 32, "wall": "2:00"})
 
     return config
 
 
 @pytest.fixture
-def make_flight(tmp_path, patch_config):
+def make_flight(tmp_path, patch_config):  # noqa: ARG001
     """Factory to create a flight directory with common structure."""
+
     def _make(fid: str, station: str = "central", n_images: int = 5, with_code=False):
         fdir = tmp_path / "mount" / station / "flights" / fid
         (fdir / "images").mkdir(parents=True, exist_ok=True)
@@ -47,10 +49,12 @@ def make_flight(tmp_path, patch_config):
         if with_code:
             (fdir / "code").mkdir(exist_ok=True)
         return fdir
+
     return _make
 
 
 # --- Fake DB objects ---------------------------------------------------------
+
 
 class FakeCollection:
     def __init__(self, docs=None):
@@ -60,7 +64,7 @@ class FakeCollection:
     def find_one(self, q):
         return self.docs.get(q.get("flight_id"))
 
-    def find(self, q, projection=None):
+    def find(self, q):
         # crude filter on research_station if present
         out = []
         for d in self.docs.values():
@@ -69,8 +73,7 @@ class FakeCollection:
             out.append(d.copy())
         return out
 
-
-    def update_one(self, q, update, upsert=False):
+    def update_one(self, q, update, upsert=False):  # noqa: ARG002
         fid = q.get("flight_id")
         doc = self.docs.setdefault(fid, {"flight_id": fid})
 
@@ -80,12 +83,14 @@ class FakeCollection:
         self.updates.append((fid, update))
         return types.SimpleNamespace(matched_count=1, modified_count=1)
 
+
 @pytest.fixture
 def fake_db(monkeypatch):
     """Monkeypatch services.db.connect_db to return a fake collection."""
     from services import db as db_module
 
     coll = FakeCollection()
+
     def _connect_db():
         return object(), coll
 
@@ -95,10 +100,12 @@ def fake_db(monkeypatch):
 
 # --- Common small helpers ----------------------------------------------------
 
+
 @pytest.fixture
 def write_log_success():
     def _write_log_success(fdir):
         # ./code/log.json with {"success": true}
         (fdir / "code").mkdir(exist_ok=True)
         (fdir / "code" / "log.json").write_text(json.dumps({"success": True}))
+
     return _write_log_success

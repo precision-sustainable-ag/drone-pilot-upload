@@ -15,32 +15,32 @@ Requires:
   - config['mount_dir']  e.g. '/rs1/shares/cals-research-station'
 
 """
+
 import argparse
 import json
 import logging
 import os
 import shutil
 from datetime import datetime, timezone
-from glob import glob
+
 import utils
 from config import config
 
-
 # ---------- Filesystem helpers ----------
+
 
 def setup_logging(logfile="reconcile.log"):
     """Configure logging to both file and console."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.FileHandler(logfile, mode="a"),
-            logging.StreamHandler()
-        ]
+        handlers=[logging.FileHandler(logfile, mode="a"), logging.StreamHandler()],
     )
+
 
 def utcnow():
     return datetime.now(timezone.utc)
+
 
 def count_files(path):
     """Count files under a directory (non-recursive)."""
@@ -48,6 +48,7 @@ def count_files(path):
         return sum(1 for _ in os.scandir(path) if _.is_file())
     except FileNotFoundError:
         return 0
+
 
 def exists_nonempty(path):
     try:
@@ -65,7 +66,7 @@ def dir_exists_nonempty(path):
 
 def load_json(path):
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             return json.load(f)
     except Exception:
         return None
@@ -91,6 +92,7 @@ def safe_move_tree(src, dst):
 
 
 # ---------- Stage checks ----------
+
 
 def has_orthophoto(fdir):
     """
@@ -149,6 +151,7 @@ def ortho_intel_done(fdir):
 
 # ---------- Finalization ----------
 
+
 def finalize_outputs(fdir, dry_run=False):
     """
     If outputs live under ./code/*, move them to the flight root:
@@ -168,7 +171,9 @@ def finalize_outputs(fdir, dry_run=False):
             # If destination already exists, skip to avoid clobbering
             logging.debug("finalize: destination exists, skipping %s", os.path.relpath(dst, fdir))
             continue
-        logging.info("finalize: moving %s -> %s", os.path.relpath(src, fdir), os.path.relpath(dst, fdir))
+        logging.info(
+            "finalize: moving %s -> %s", os.path.relpath(src, fdir), os.path.relpath(dst, fdir)
+        )
         if not dry_run:
             safe_move_tree(src, dst)
 
@@ -184,6 +189,7 @@ def finalize_outputs(fdir, dry_run=False):
 
 
 # ---------- Mongo update helpers ----------
+
 
 def set_stage(db, fid, stage, updates, dry_run=False):
     path = f"stages.{stage}"
@@ -218,9 +224,10 @@ def recompute_overall(odm_state, oi_state):
 
 # ---------- Reconcile one flight ----------
 
+
 def reconcile_one(db, meta, dry_run=False, finalize=True):
     fid = meta["flight_id"]
-    rs = meta["research_station"]
+    meta["research_station"]
     fdir = flight_dir_for(meta)
 
     if not os.path.isdir(fdir):
@@ -239,7 +246,7 @@ def reconcile_one(db, meta, dry_run=False, finalize=True):
 
     # Stage inspectors
     ok_odm, why_odm = odm_done(fdir)
-    ok_oi,  why_oi  = ortho_intel_done(fdir)
+    ok_oi, why_oi = ortho_intel_done(fdir)
 
     # Finalize outputs if ODM is done and stuff still under ./code
     if ok_odm and finalize:
@@ -248,22 +255,36 @@ def reconcile_one(db, meta, dry_run=False, finalize=True):
     # Read current stage states (if any)
     stages = meta.get("stages", {})
     odm_state_prev = stages.get("odm", {}).get("state")
-    oi_state_prev  = stages.get("ortho_intel", {}).get("state")
+    oi_state_prev = stages.get("ortho_intel", {}).get("state")
 
     # Compute desired states
-    odm_state = "succeeded" if ok_odm else ("processing" if odm_state_prev in ("pending", "processing") else "unknown")
-    oi_state  = "succeeded" if ok_oi  else ("processing" if oi_state_prev  in ("pending", "processing") else "unknown")
+    odm_state = (
+        "succeeded"
+        if ok_odm
+        else ("processing" if odm_state_prev in ("pending", "processing") else "unknown")
+    )
+    oi_state = (
+        "succeeded"
+        if ok_oi
+        else ("processing" if oi_state_prev in ("pending", "processing") else "unknown")
+    )
 
     now = utcnow()
 
     # Update per-stage (only if changed or missing)
     if odm_state != odm_state_prev:
-        updates = {"state": odm_state, "ended_at": now} if odm_state == "succeeded" else {"state": odm_state}
+        updates = (
+            {"state": odm_state, "ended_at": now}
+            if odm_state == "succeeded"
+            else {"state": odm_state}
+        )
         updates.setdefault("message", why_odm)
         set_stage(db, fid, "odm", updates, dry_run=dry_run)
 
     if oi_state != oi_state_prev:
-        updates = {"state": oi_state, "ended_at": now} if oi_state == "succeeded" else {"state": oi_state}
+        updates = (
+            {"state": oi_state, "ended_at": now} if oi_state == "succeeded" else {"state": oi_state}
+        )
         updates.setdefault("message", why_oi)
         set_stage(db, fid, "ortho_intel", updates, dry_run=dry_run)
 
@@ -294,19 +315,23 @@ def reconcile_one(db, meta, dry_run=False, finalize=True):
 
 # ---------- Main ----------
 
+
 def main():
     ap = argparse.ArgumentParser(description="Reconcile flight records with real outputs")
     ap.add_argument("--station", help="Research station filter (e.g., central)", default=None)
     ap.add_argument("--limit", type=int, default=0, help="Max flights to process (0 = no limit)")
     ap.add_argument("--dry-run", action="store_true", help="Do not write to DB or move files")
     ap.add_argument("--log-level", default="INFO", help="Logging level (DEBUG, INFO, WARNING)")
-    args = ap.parse_args()
+    ap.parse_args()
 
     setup_logging()
 
     client, col = utils.connectDb()
 
-    col.update_many({"research_station":"sandhills","status":"processing"},{"$set":{"status":"failed"}})
+    col.update_many(
+        {"research_station": "sandhills", "status": "processing"}, {"$set": {"status": "failed"}}
+    )
+
 
 if __name__ == "__main__":
     main()

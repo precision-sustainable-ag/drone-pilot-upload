@@ -1,8 +1,10 @@
 # services/reconcile.py
 from __future__ import annotations
-from typing import Optional
 
-def recompute_overall(odm_state: str, oi_state: str, overall_prev: str | None, *, failed_now: bool) -> str:
+
+def recompute_overall(
+    odm_state: str, oi_state: str, overall_prev: str | None, *, failed_now: bool
+) -> str:
     # processed is terminal
     if overall_prev == "processed":
         return "processed"
@@ -20,11 +22,12 @@ def recompute_overall(odm_state: str, oi_state: str, overall_prev: str | None, *
     # Otherwise keep prior or default to processing (no promotion on stale OI failure)
     return overall_prev or "processing"
 
+
 def reconcile_state(
-    prev: Optional[str],
+    prev: str | None,
     ok_by_artifacts: bool,
-    tail_state: Optional[str],
-    tail_reason: Optional[str] = None,
+    tail_state: str | None,
+    tail_reason: str | None = None,
 ) -> tuple[str, str]:
     """
     Decide a new state for one stage.

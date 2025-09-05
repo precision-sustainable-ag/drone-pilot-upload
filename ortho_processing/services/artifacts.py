@@ -1,17 +1,21 @@
-import os
+from __future__ import annotations
+
 import json
 import logging
-from .fs import exists_nonempty, dir_exists_nonempty, safe_move_tree
-from typing import Optional
+import os
+
+from .fs import exists_nonempty, safe_move_tree
+
 
 def load_json(path: str):
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             return json.load(f)
     except Exception:
         return None
 
-def has_orthophoto(fdir: str) -> Optional[str]:
+
+def has_orthophoto(fdir: str) -> str | None:
     p1 = os.path.join(fdir, "odm_orthophoto", "odm_orthophoto.tif")
     p2 = os.path.join(fdir, "code", "odm_orthophoto", "odm_orthophoto.tif")
     if exists_nonempty(p1):
@@ -20,9 +24,9 @@ def has_orthophoto(fdir: str) -> Optional[str]:
         return p2
     return None
 
+
 def odm_done(fdir: str) -> tuple[bool, str]:
-    for cand in (os.path.join(fdir, "code", "log.json"),
-                 os.path.join(fdir, "log.json")):
+    for cand in (os.path.join(fdir, "code", "log.json"), os.path.join(fdir, "log.json")):
         j = load_json(cand)
         if isinstance(j, dict) and j.get("success") is True:
             return True, f"log.json success=true ({os.path.relpath(cand, fdir)})"
@@ -30,6 +34,7 @@ def odm_done(fdir: str) -> tuple[bool, str]:
     if ortho:
         return True, f"orthophoto present ({os.path.relpath(ortho, fdir)})"
     return False, "no success markers and no orthophoto"
+
 
 def ortho_intel_done(fdir: str) -> tuple[bool, str]:
     veg_dir = os.path.join(fdir, "veg_indices")
@@ -45,7 +50,8 @@ def ortho_intel_done(fdir: str) -> tuple[bool, str]:
         return False, "COG present but no veg indices rasters"
     return False, "no ortho_intel artifacts"
 
-def finalize_outputs(fdir: str, dry_run: bool=False) -> None:
+
+def finalize_outputs(fdir: str, dry_run: bool = False) -> None:
     code_dir = os.path.join(fdir, "code")
     if not os.path.isdir(code_dir):
         return
@@ -64,6 +70,7 @@ def finalize_outputs(fdir: str, dry_run: bool=False) -> None:
         if not residual:
             if not dry_run:
                 import shutil
+
                 shutil.rmtree(code_dir, ignore_errors=True)
     except FileNotFoundError:
         pass

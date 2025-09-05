@@ -1,6 +1,8 @@
 import os
 import shutil
+
 from config import config
+
 
 def count_files(path: str) -> int:
     try:
@@ -8,17 +10,20 @@ def count_files(path: str) -> int:
     except FileNotFoundError:
         return 0
 
+
 def exists_nonempty(path: str) -> bool:
     try:
         return os.path.isfile(path) and os.path.getsize(path) > 0
     except OSError:
         return False
 
+
 def dir_exists_nonempty(path: str) -> bool:
     try:
         return os.path.isdir(path) and any(os.scandir(path))
     except OSError:
         return False
+
 
 def safe_move_tree(src: str, dst: str) -> None:
     if not os.path.exists(src):
@@ -29,6 +34,7 @@ def safe_move_tree(src: str, dst: str) -> None:
     except OSError:
         shutil.copytree(src, dst, dirs_exist_ok=True)
         shutil.rmtree(src, ignore_errors=True)
+
 
 def flight_dir_for(meta):
     """Resolve flight directory from metadata."""

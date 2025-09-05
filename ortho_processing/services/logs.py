@@ -1,9 +1,11 @@
 # services/logs.py
+import logging
 import os
 import sys
-import logging
 from logging.handlers import TimedRotatingFileHandler
+
 from config import config
+
 
 def setup_logging(log_file=None, level=logging.INFO, to_console=True):
     """
@@ -12,7 +14,7 @@ def setup_logging(log_file=None, level=logging.INFO, to_console=True):
     inheritance gotcha.
     """
     if log_file is None:
-        log_file = config['log_file']
+        log_file = config["log_file"]
 
     log_folder = os.path.dirname(log_file) or "."
     os.makedirs(log_folder, exist_ok=True)
@@ -30,9 +32,9 @@ def setup_logging(log_file=None, level=logging.INFO, to_console=True):
     root.setLevel(level)
 
     # File handler (rotating by date)
-    fh = TimedRotatingFileHandler(log_file, when='D', interval=30)
+    fh = TimedRotatingFileHandler(log_file, when="D", interval=30)
     fh.setLevel(level)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     fh.setFormatter(formatter)
     root.addHandler(fh)
 

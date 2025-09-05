@@ -1,6 +1,7 @@
 # tests/test_fs.py
 from services.fs import count_files
 
+
 def test_count_files_counts_images_nonrecursive(tmp_path):
     d = tmp_path / "images"
     d.mkdir()

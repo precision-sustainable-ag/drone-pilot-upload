@@ -1,6 +1,6 @@
 # tests/test_artifacts.py
-import os
-from services.artifacts import has_orthophoto, odm_done, ortho_intel_done, finalize_outputs
+from services.artifacts import finalize_outputs, has_orthophoto, odm_done, ortho_intel_done
+
 
 def test_has_orthophoto_finds_final_or_code(make_flight):
     f = make_flight("F1", with_code=True)
@@ -10,12 +10,15 @@ def test_has_orthophoto_finds_final_or_code(make_flight):
     # under ./code first
     (f / "code" / "odm_orthophoto").mkdir(parents=True)
     (f / "code" / "odm_orthophoto" / "odm_orthophoto.tif").write_text("x")
-    assert has_orthophoto(str(f)).endswith("code/odm_orthophoto/odm_orthophoto.tif")
+    p = has_orthophoto(str(f))
+    assert p is not None and p.endswith("code/odm_orthophoto/odm_orthophoto.tif")
 
     # final takes precedence
     (f / "odm_orthophoto").mkdir()
     (f / "odm_orthophoto" / "odm_orthophoto.tif").write_text("y")
-    assert has_orthophoto(str(f)).endswith("odm_orthophoto/odm_orthophoto.tif")
+    p2 = has_orthophoto(str(f))
+    assert p2 is not None and p2.endswith("odm_orthophoto/odm_orthophoto.tif")
+
 
 def test_odm_done_by_log_success(make_flight):
     f = make_flight("F2", with_code=True)
@@ -23,12 +26,14 @@ def test_odm_done_by_log_success(make_flight):
     ok, why = odm_done(str(f))
     assert ok and "success=true" in why
 
+
 def test_odm_done_by_artifact(make_flight):
     f = make_flight("F3", with_code=True)
     (f / "code" / "odm_orthophoto").mkdir(parents=True)
     (f / "code" / "odm_orthophoto" / "odm_orthophoto.tif").write_text("x")
     ok, why = odm_done(str(f))
     assert ok and "orthophoto" in why
+
 
 def test_ortho_intel_done_requires_veg_index(make_flight):
     f = make_flight("F4")
@@ -44,6 +49,7 @@ def test_ortho_intel_done_requires_veg_index(make_flight):
     ok2, why2 = ortho_intel_done(str(f))
     assert ok2 and "veg_indices" in why2
 
+
 def test_finalize_outputs_moves_from_code(make_flight):
     f = make_flight("F5", with_code=True)
     # prepare content under ./code
@@ -58,7 +64,8 @@ def test_finalize_outputs_moves_from_code(make_flight):
     # code should remain only with images or be gone
     code = f / "code"
     if code.exists():
-        assert list(p.name for p in code.iterdir()) == ["images"]
+        assert [p.name for p in code.iterdir()] == ["images"]
+
 
 def test_finalize_outputs_skips_existing_dest(make_flight):
     f = make_flight("FEXIST", with_code=True)
@@ -69,6 +76,7 @@ def test_finalize_outputs_skips_existing_dest(make_flight):
     (f / "odm_orthophoto" / "odm_orthophoto.tif").write_text("DST")  # pre-existing
 
     from services.artifacts import finalize_outputs
+
     finalize_outputs(str(f))
 
     # Destination should remain untouched ("DST"), not overwritten by "SRC"
