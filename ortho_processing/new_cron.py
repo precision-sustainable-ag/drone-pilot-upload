@@ -13,7 +13,8 @@ from services.pipeline import write_and_run_odm, write_and_run_ortho_intel
 from services.fs import count_files
 from services.db import connect_db
 from services.logs import setup_logging
-from services.records import update_record
+from services.persistence import update_record
+from reconcile_flights import reconcile_one
 
 # ---------- main per-flight logic ----------
 
@@ -26,6 +27,14 @@ def processFlight(flight_id, db_collection=None):
     if not meta:
         logging.error({'service': 'processFlight', 'message': f'{flight_id} - no DB record found'})
         return None
+
+    # targeted reconcile first (freshen stage/overall; moves outputs if ODM done)
+    try:
+        reconcile_one(db_collection, meta, dry_run=False, finalize=True)
+        # refresh after reconcile
+        meta = db_collection.find_one({'flight_id': flight_id}) or meta
+    except Exception as e:
+        logging.exception("reconcile before processing failed for %s: %s", flight_id, e)
 
     research_station = meta['research_station']
     status = meta.get('status')

@@ -12,14 +12,15 @@ config = {
     'mount_dir': '/rs1/shares/cals-research-station/',
     'code_dir': '/usr/local/usrapps/drones/drone-pilot-upload/',
     'log_file': '/home/hpc.drone.svc/ondemand/data/drone-pilot-upload/cron_log.json',
+    'reconcile_log_file': '/usr/local/usrapps/drones/drone-pilot-upload/logs/reconcile.log',
     'python_exec': '/usr/local/usrapps/drones/drone-pilot-upload/backend/venv/bin/python3',
     'scratch_dir': '/share/drones/hpc.drone.svc/tmp',
     # ODM job defaults
 
     "odm": {
-        "queue": "short_gpu",
-        "n_cores": 32,
-        "wall": "2:00",
+        "queue": "gpu",
+        "n_cores": 16,
+        "wall": "30:00",
         "mem_gb": 250,
         "pc_quality": "medium",
         "sif_file": "sif_files/odm_gpu-fixed.sif",
