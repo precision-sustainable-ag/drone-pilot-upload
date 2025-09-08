@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 
-from .fs import exists_nonempty, safe_move_tree
+from services.fs import exists_nonempty, safe_move_tree
+from services.logs import get_logger
+
+# setup logging
+log = get_logger(__name__, component="artifacts")
 
 
 def load_json(path: str):
@@ -61,10 +64,24 @@ def finalize_outputs(fdir: str, dry_run: bool = False) -> None:
         src = os.path.join(code_dir, item)
         dst = os.path.join(fdir, item)
         if os.path.exists(dst):
-            logging.debug("finalize: destination exists, skipping %s", os.path.relpath(dst, fdir))
+            log.debug(
+                {
+                    "event": "finalize_skip_exists",
+                    "flight_dir": fdir,
+                    "dst": os.path.relpath(dst, fdir),
+                }
+            )
             continue
         if not dry_run:
             safe_move_tree(src, dst)
+            log.info(
+                {
+                    "event": "finalize_moved",
+                    "flight_dir": fdir,
+                    "src": os.path.relpath(src, fdir),
+                    "dst": os.path.relpath(dst, fdir),
+                }
+            )
     try:
         residual = [x.name for x in os.scandir(code_dir) if x.name != "images"]
         if not residual:
@@ -72,5 +89,6 @@ def finalize_outputs(fdir: str, dry_run: bool = False) -> None:
                 import shutil
 
                 shutil.rmtree(code_dir, ignore_errors=True)
+                log.debug({"event": "finalize_removed_code_dir", "flight_dir": fdir})
     except FileNotFoundError:
         pass
