@@ -22,7 +22,7 @@ from services.pipeline import write_and_run_odm, write_and_run_ortho_intel
 
 
 def processFlight(flight_id, db_collection=None):
-    # Allow single-flight testing without main(): connect if not provided
+    # allow single-flight testing without main(): connect if not provided
     if db_collection is None:
         _, db_collection = connect_db()
 
@@ -42,8 +42,10 @@ def processFlight(flight_id, db_collection=None):
     research_station = meta["research_station"]
     status = meta.get("status")
     flight_dir = os.path.join(config["mount_dir"], research_station, "flights", flight_id)
+    stages = meta.get("stages") or {}
+    odm_state = (stages.get("odm") or {}).get("state")
 
-    # Sanity: image count must match
+    # image count must match
     images_dir = os.path.join(flight_dir, "images")
     if meta["num_files"] != count_files(images_dir):
         logging.info(
@@ -51,14 +53,21 @@ def processFlight(flight_id, db_collection=None):
         )
         return None
 
-    # --- NEW: If already "ortho generated", skip ODM and run ONLY ortho_intel ---
-    if status == "ortho generated":
+    # if already "ortho generated", odm succeeded but ortho intel failed,
+    # skip ODM and run ONLY ortho_intel
+    if status == "ortho generated" or (status == "failed" and odm_state == "succeeded"):
+        reason = (
+            "status=ortho generated, skipping ODM"
+            if status == "ortho generated"
+            else "retry: overall=failed but odm=succeeded; running ortho_intel only"
+        )
         logging.info(
             {
                 "service": "processFlight",
-                "message": f"{flight_id} - status=ortho generated, skipping ODM",
+                "message": f"{flight_id} - {reason}",
             }
         )
+        update_record(flight_dir, flight_id, "processing")
         if write_and_run_ortho_intel(flight_dir, flight_id):
             update_record(flight_dir, flight_id, "processed", research_station)
             return flight_id
@@ -66,7 +75,7 @@ def processFlight(flight_id, db_collection=None):
             update_record(flight_dir, flight_id, "failed")
             return None
 
-    # Default path: run ODM then ortho_intel
+    # default path: run ODM then ortho_intel
     update_record(flight_dir, flight_id, "processing")
 
     if not write_and_run_odm(flight_dir, flight_id):
@@ -102,8 +111,8 @@ def main():
         # always allow 'ortho generated' so we can finish them
         if "status" not in row:
             records_to_process.append(row["flight_id"])
-        elif row["status"] in ["processed", "processing", "failed"]:
-            # Skip already processed and currently-running
+        elif row["status"] in ["processed", "processing"]:
+            # skip already processed and currently-running
             continue
         else:
             # includes: ortho generated, failed, unknown, etc.
