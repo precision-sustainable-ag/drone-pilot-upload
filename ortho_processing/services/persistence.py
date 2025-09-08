@@ -5,6 +5,9 @@ from datetime import datetime, timezone
 
 from services.db import connect_db
 from services.geo import read_crs
+from services.logs import get_logger
+
+log = get_logger(__name__, component="persistence")
 
 
 def utcnow():
@@ -17,6 +20,9 @@ def set_stage(db, fid: str, stage: str, updates: dict, dry_run: bool = False) ->
     if dry_run:
         return
     db.update_one({"flight_id": fid}, {"$set": payload})
+    log.debug(
+        {"event": "set_stage", "flight_id": fid, "stage": stage, "keys": sorted(updates.keys())}
+    )
 
 
 def update_record(
@@ -51,6 +57,9 @@ def update_record(
             )
 
     col.update_one(q, update, upsert=True)
+    log.debug(
+        {"event": "update_record", "flight_id": flight_id, "status": status, "rs": research_station}
+    )
 
 
 def set_overall_status(fdir: str, fid: str, status: str, rs: str, dry_run: bool = False) -> None:
@@ -58,3 +67,4 @@ def set_overall_status(fdir: str, fid: str, status: str, rs: str, dry_run: bool 
         return
     # utils.updateRecord handles audit/logging for you
     update_record(fdir, fid, status, rs)
+    log.info({"event": "overall_status_set", "flight_id": fid, "status": status, "station": rs})

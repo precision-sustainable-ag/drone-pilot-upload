@@ -5,7 +5,12 @@ import os
 from config import config
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from services.logs import get_logger
+
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "..", "templates")
+
+# setup logging
+log = get_logger(__name__, component="scripts")
 
 _env = Environment(
     loader=FileSystemLoader(TEMPLATES_DIR),
@@ -40,6 +45,22 @@ def write_odm_script(*, flight_dir: str, images_dir: str, script_path: str) -> s
     with open(script_path, "w") as f:
         f.write(content)
     os.chmod(script_path, 0o755)
+
+    log.debug(
+        {
+            "event": "write_script",
+            "kind": "odm",
+            "script_path": script_path,
+            "flight_dir": flight_dir,
+            "images_dir": images_dir,
+            "queue": odm_cfg["queue"],
+            "n_cores": odm_cfg["n_cores"],
+            "wall": odm_cfg["wall"],
+            "mem_gb": odm_cfg["mem_gb"],
+            "pc_quality": odm_cfg["pc_quality"],
+        }
+    )
+
     return script_path
 
 
@@ -61,4 +82,18 @@ def write_ortho_intel_script(*, flight_dir: str, ortho_file: str, script_path: s
     with open(script_path, "w") as f:
         f.write(content)
     os.chmod(script_path, 0o755)
+
+    log.debug(
+        {
+            "event": "write_script",
+            "kind": "ortho_intel",
+            "script_path": script_path,
+            "flight_dir": flight_dir,
+            "ortho_file": ortho_file,
+            "queue": oi_cfg["queue"],
+            "n_cores": oi_cfg["n_cores"],
+            "wall": oi_cfg["wall"],
+        }
+    )
+
     return script_path

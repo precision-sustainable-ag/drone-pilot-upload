@@ -31,10 +31,12 @@ from services.db import connect_db
 from services.fs import count_files, flight_dir_for
 
 # services imports
-from services.logs import setup_logging
+from services.logs import get_logger, setup_logging
 from services.lsf_parse import lsf_terminal_status
 from services.persistence import set_overall_status, set_stage
 from services.status import recompute_overall, reconcile_state
+
+log = get_logger(__name__, component="reconcile_flights")
 
 # ---------- Filesystem helpers ----------
 
@@ -50,9 +52,10 @@ def reconcile_one(db, meta, dry_run=False, finalize=True):
     fid = meta["flight_id"]
     rs = meta["research_station"]
     fdir = flight_dir_for(meta)
+    log = get_logger(__name__, service="reconcile", flight_id=fid, station=rs)
 
     if not os.path.isdir(fdir):
-        logging.warning("%s: flight directory not found: %s", fid, fdir)
+        log.warning("flight directory not found: %s", fdir)
         return
 
     images_dir = os.path.join(fdir, "images")
@@ -60,7 +63,7 @@ def reconcile_one(db, meta, dry_run=False, finalize=True):
     expected = meta.get("num_files")
     if expected and actual != expected and meta.get("status") != "processed":
         msg = f"file count mismatch (expected {expected}, found {actual})"
-        logging.error("%s: %s", fid, msg)
+        log.error(msg)
         set_stage(db, fid, "odm", {"state": "blocked", "message": msg}, dry_run)
         set_overall_status(fdir, fid, "file count mismatch", rs, dry_run)
         return  # skip further checks
@@ -133,7 +136,7 @@ def reconcile_one(db, meta, dry_run=False, finalize=True):
 
     if overall != overall_prev:
         set_overall_status(fdir, fid, overall, rs, dry_run)
-        logging.info("%s: status %s -> %s", fid, overall_prev, overall)
+        log.info("status %s -> %s", overall_prev, overall)
 
 
 # ---------- Main ----------
@@ -170,9 +173,7 @@ def main():
         except Exception as e:
             logging.exception("Error reconciling %s: %s", meta.get("flight_id"), e)
 
-    logging.info(
-        "Reconciled %d flights%s", count, f" (station={args.station})" if args.station else ""
-    )
+    log.info("reconciled %d flights%s", count, f" (station={args.station})" if args.station else "")
 
 
 if __name__ == "__main__":
