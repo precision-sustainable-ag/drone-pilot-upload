@@ -2,7 +2,7 @@
 import os
 from datetime import datetime, timedelta
 
-import new_cron as nc
+import submit_jobs_and_exit as nc
 
 # --- helpers ----------------------------------------------------------------
 
@@ -44,7 +44,7 @@ def flight_dir_for(cfg, meta):
 
 def test_processFlight_no_record(fake_db):
     # no doc in db
-    assert nc.processFlight("MISSING", fake_db) is None
+    assert nc.process_flight("MISSING", fake_db) is None
 
 
 def test_processFlight_file_count_mismatch(monkeypatch, make_flight, fake_db):
@@ -68,7 +68,7 @@ def test_processFlight_file_count_mismatch(monkeypatch, make_flight, fake_db):
         lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("OI should not run")),
     )
 
-    out = nc.processFlight("MM1", fake_db)
+    out = nc.process_flight("MM1", fake_db)
     assert out is None
     assert calls.items == []
 
@@ -89,7 +89,7 @@ def test_processFlight_ortho_generated_success(monkeypatch, make_flight, fake_db
     calls = Calls()
     monkeypatch.setattr(nc, "update_record", lambda *a, **k: calls.append(*a, **k))
 
-    out = nc.processFlight("OG1", fake_db)
+    out = nc.process_flight("OG1", fake_db)
     assert out == "OG1"
     # Only one update: processed (with research_station)
     assert calls.statuses() == ["processed"]
@@ -107,7 +107,7 @@ def test_processFlight_ortho_generated_failure(monkeypatch, make_flight, fake_db
     calls = Calls()
     monkeypatch.setattr(nc, "update_record", lambda *a, **k: calls.append(*a, **k))
 
-    out = nc.processFlight("OG2", fake_db)
+    out = nc.process_flight("OG2", fake_db)
     assert out is None
     assert calls.statuses() == ["failed"]
 
@@ -124,7 +124,7 @@ def test_processFlight_default_success(monkeypatch, make_flight, fake_db):
     calls = Calls()
     monkeypatch.setattr(nc, "update_record", lambda *a, **k: calls.append(*a, **k))
 
-    out = nc.processFlight("DF1", fake_db)
+    out = nc.process_flight("DF1", fake_db)
     assert out == "DF1"
     # processing -> ortho generated -> processed
     assert calls.statuses() == ["processing", "ortho generated", "processed"]
@@ -146,7 +146,7 @@ def test_processFlight_default_odm_fail(monkeypatch, make_flight, fake_db):
     calls = Calls()
     monkeypatch.setattr(nc, "update_record", lambda *a, **k: calls.append(*a, **k))
 
-    out = nc.processFlight("DF2", fake_db)
+    out = nc.process_flight("DF2", fake_db)
     assert out is None
     assert calls.statuses() == ["processing", "failed"]
 
@@ -162,7 +162,7 @@ def test_processFlight_default_oi_fail(monkeypatch, make_flight, fake_db):
     calls = Calls()
     monkeypatch.setattr(nc, "update_record", lambda *a, **k: calls.append(*a, **k))
 
-    out = nc.processFlight("DF3", fake_db)
+    out = nc.process_flight("DF3", fake_db)
 
     assert out is None
     assert calls.statuses() == ["processing", "ortho generated", "failed"]

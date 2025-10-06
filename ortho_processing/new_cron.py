@@ -126,6 +126,7 @@ def main():
     # argument for running one station at a time
     ap = argparse.ArgumentParser(description="Run ODM/Ortho-Intel jobs for eligible flights")
     ap.add_argument("--station", default="central", help="Research station filter (e.g., central)")
+    ap.add_argument("--limit", default=None, help="How many flights to process")
     ap.add_argument(
         "--max-workers", type=int, default=multiprocessing.cpu_count(), help="Thread pool size"
     )
@@ -145,17 +146,24 @@ def main():
     query = {"upload_time": {"$lt": yesterday}, "research_station": args.station}
     results = db_collection.find(query)
 
+    index = 0
     records_to_process = []
     for row in results:
         # always allow 'ortho generated' so we can finish them
         if "status" not in row:
             records_to_process.append(row["flight_id"])
-        elif row["status"] in ["processed", "processing"]:
+            index += 1
+        elif row["status"] in ["processed", "processing", "file count mismatch"]:
             # skip already processed and currently-running
             continue
         else:
             # includes: ortho generated, failed, unknown, etc.
             records_to_process.append(row["flight_id"])
+            index += 1
+
+        # break once limit number of flights have been processed
+        if args.limit and index >= int(args.limit):
+            break
 
     if records_to_process:
         log.info(

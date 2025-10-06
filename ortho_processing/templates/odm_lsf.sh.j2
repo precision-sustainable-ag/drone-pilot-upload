@@ -3,7 +3,7 @@
 ## requested job run time
 #BSUB -W {{ wall }}
 #BSUB -q {{ queue }}
-#BSUB -R "select[gpu] span[hosts=1] rusage[mem={{ mem_gb }}GB]"
+#BSUB -R "select[gpu] span[hosts=1] rusage[mem={{ mem_gb }}GB] affinity[core(1):cpubind=core:distribute=pack]"
 #BSUB -gpu "num=1:mode=shared:mps=no"
 ## Tag general output file and std error output
 #BSUB -o odm_processing-out.txt
@@ -14,15 +14,14 @@ export output_dir='{{ flight_dir }}'
 export images_dir='{{ images_dir }}'
 
 mkdir -p "$output_dir/code/images"
-cp "$images_dir"/* "$output_dir/code/images"
 cd "$output_dir"
 
 module load apptainer || module load singularity
 APPT=$(command -v apptainer || command -v singularity)
 "$APPT" --version
 
-"$APPT" run --bind "$output_dir/code/images","$tmp_dir" \
+"$APPT" run --bind "$images_dir:$output_dir/code/images:ro","$tmp_dir" \
   --writable-tmpfs --nv {{ odm_sif_file }} --project-path "$output_dir" \
-  --dtm --orthophoto-resolution 0.01 --smrf-threshold 0.4 \
-  --smrf-window 24 --dsm --min-num-features 50000 --orthophoto-compression LZMA \
-  --feature-type sift --pc-quality {{ pc_quality }}
+  --dtm --orthophoto-resolution {{ resolution }} --smrf-threshold 0.4 \
+  --smrf-window 24 --dsm --min-num-features {{ min_features }} --orthophoto-compression {{ compression }} \
+  --feature-type sift --pc-quality {{ pc_quality }} --max-concurrency {{ max_concurrency }}
