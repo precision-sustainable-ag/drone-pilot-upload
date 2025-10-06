@@ -10,7 +10,7 @@ const FolderUpload = () => {
   const [formData, setFormData] = useState({
     'pilotName': '',
     'comments': '',
-    'station': '',
+    'research_station': '',
     'cloudiness': '',
   });
   const [isSelectedFoldersModalVisible, setIsSelectedFoldersModalVisible] = useState(false);
@@ -30,7 +30,7 @@ const FolderUpload = () => {
     const imageFiles = files.filter((file) => {
       const fileNameParts = file.name.split('.');
       const fileExtension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
-      if (imgExtensions.includes(fileExtension)) 
+      if (imgExtensions.includes(fileExtension))
           imageFlag = 1;
       return !(file.name.startsWith('.') || file.name.startsWith('desktop.ini') );
     });
@@ -237,8 +237,8 @@ const MenuProps = {
             <Grid item xs={6} sm={6} md={6} lg={6} container spacing={2} alignItems="stretch">
             <Grid item xs={8} sm={8} md={8} lg={8} style={{ display: 'flex' }}>
               <label style={{border: '2px dashed #ccc',
-              borderRadius: '4px', 
-              padding: '2px', 
+              borderRadius: '4px',
+              padding: '2px',
               textAlign: 'center',
               display: 'grid',
               minHeight: '50px',
@@ -285,9 +285,9 @@ const MenuProps = {
               </FormControl>
             </Grid>
             <Grid item xs={6} sm={6} md={6} lg={6}>
-              <TextField required 
-              fullWidth type="text" name="pilotName" 
-              value={formData.pilotName} onChange={handleInputChange} 
+              <TextField required
+              fullWidth type="text" name="pilotName"
+              value={formData.pilotName} onChange={handleInputChange}
               label="Pilot Name" inputRef={pilotNameRef}
               disabled={loading}/>
             </Grid>
@@ -314,9 +314,9 @@ const MenuProps = {
                 </FormControl>
             </Grid>
             <Grid item xs={12} sm={12} md={12} lg={12}>
-              <TextField fullWidth 
-              name="comments" value={formData.comments} 
-              onChange={handleInputChange} label="Additional comments" 
+              <TextField fullWidth
+              name="comments" value={formData.comments}
+              onChange={handleInputChange} label="Additional comments"
               inputRef={commentsRef} disabled={loading}/>
             </Grid>
 
@@ -326,7 +326,7 @@ const MenuProps = {
                 variant="contained"
                 color="primary"
                 onClick={handleUpload}
-                disabled={(selectedFolders.length === 0) || (formData.pilotName === '') || (formData.cloudiness === '') || (loading)}
+                disabled={(selectedFolders.length === 0) || (formData.pilotName === '') || (formData.cloudiness === '' || formData.research_station === '') || (loading)}
               >
                 {loading ? <CircularProgress size={24} color="inherit" /> : 'Upload Folder(s)'}
               </Button>

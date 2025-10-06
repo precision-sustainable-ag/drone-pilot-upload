@@ -9,8 +9,17 @@ def recompute_overall(
     if overall_prev == "processed":
         return "processed"
 
-    # Only downgrade on a fresh failure
-    if failed_now:
+    # 'ortho generated' is sticky against downgrades; only allow promotion to 'processed'
+    if overall_prev == "ortho generated" and oi_state != "succeeded":
+        return "ortho generated"
+
+    # only downgrade on a fresh failure *and* an actually failed stage
+    # (but never demote from 'ortho generated')
+    if (
+        overall_prev not in {"ortho generated"}
+        and failed_now
+        and ("failed" in {odm_state, oi_state})
+    ):
         return "failed"
 
     # Success paths (no stale-failure promotion)

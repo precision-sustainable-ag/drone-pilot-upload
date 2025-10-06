@@ -28,7 +28,7 @@ from services.artifacts import (
     ortho_intel_done,
 )
 from services.db import connect_db
-from services.fs import count_files, flight_dir_for
+from services.fs import count_files, flight_dir_for, parse_iso, tail_mtime_for_stage
 
 # services imports
 from services.logs import get_logger, setup_logging
@@ -59,10 +59,14 @@ def reconcile_one(db, meta, dry_run=False, finalize=True):
         return
 
     images_dir = os.path.join(fdir, "images")
-    actual = count_files(images_dir)
+    images_count = count_files(images_dir)
+
+    panels_dir = os.path.join(fdir, "panels")
+    panels_count = count_files(panels_dir)
+
     expected = meta.get("num_files")
-    if expected and actual != expected and meta.get("status") != "processed":
-        msg = f"file count mismatch (expected {expected}, found {actual})"
+    if expected and (images_count + panels_count) != expected and meta.get("status") != "processed":
+        msg = f"count mismatch. expected {expected}, found {images_count + panels_count})"
         log.error(msg)
         set_stage(db, fid, "odm", {"state": "blocked", "message": msg}, dry_run)
         set_overall_status(fdir, fid, "file count mismatch", rs, dry_run)
@@ -72,20 +76,49 @@ def reconcile_one(db, meta, dry_run=False, finalize=True):
     ok_odm, why_odm = odm_done(fdir)
     ok_oi, why_oi = ortho_intel_done(fdir)
 
-    # Tail inspectors (terminal status only at the end of LSF logs)
-
-    odm_out = os.path.join(fdir, "odm_processing-out.txt")
-    odm_err = os.path.join(fdir, "odm_processing-err.txt")
-    odm_tail_state, odm_tail_reason = lsf_terminal_status(odm_out, odm_err)
-
-    oi_out = os.path.join(fdir, "ortho_intel-out.txt")
-    oi_err = os.path.join(fdir, "ortho_intel-err.txt")
-    oi_tail_state, oi_tail_reason = lsf_terminal_status(oi_out, oi_err)
-
     # Read current stage states (if any)
     stages = meta.get("stages", {})
     odm_state_prev = stages.get("odm", {}).get("state")
     oi_state_prev = stages.get("ortho_intel", {}).get("state")
+
+    # Tail inspectors (terminal status only at the end of LSF logs)
+    odm_out = os.path.join(fdir, "odm_processing-out.txt")
+    odm_err = os.path.join(fdir, "odm_processing-err.txt")
+    odm_tail_state, odm_tail_reason = lsf_terminal_status(odm_out, odm_err)
+    odm_updated_time = parse_iso(
+        (stages.get("odm") or {}).get("updated_at") or (stages.get("odm") or {}).get("submitted_at")
+    )
+    odm_tail_time = tail_mtime_for_stage(fdir, "odm")
+
+    oi_out = os.path.join(fdir, "ortho_intel-out.txt")
+    oi_err = os.path.join(fdir, "ortho_intel-err.txt")
+    oi_tail_state, oi_tail_reason = lsf_terminal_status(oi_out, oi_err)
+    oi_updated_time = parse_iso(
+        (stages.get("ortho_intel") or {}).get("updated_at")
+        or (stages.get("ortho_intel") or {}).get("submitted_at")
+    )
+    oi_tail_time = tail_mtime_for_stage(fdir, "ortho_intel")
+
+    overall_prev = meta.get("status")
+    if overall_prev == "processing":
+        print(odm_updated_time, odm_tail_time, oi_updated_time, oi_tail_time)
+
+    def fresh_fail(tail_state, tail_time, ref):
+        return bool(tail_state == "failed" and tail_time and ref and tail_time >= ref)
+
+    odm_failed_now = fresh_fail(odm_tail_state, odm_tail_time, odm_updated_time)
+    oi_failed_now = fresh_fail(oi_tail_state, oi_tail_time, oi_updated_time)
+
+    # Simple guard: if OI shows any failure and has never been succeeded,
+    # don't let artifacts promote it
+    if (oi_tail_state == "failed" or oi_failed_now) and oi_state_prev != "succeeded":
+        ok_oi = False
+
+    # Ignore stale failures
+    if odm_tail_state == "failed" and not odm_failed_now:
+        odm_tail_state = None
+    if oi_tail_state == "failed" and not oi_failed_now:
+        oi_tail_state = None
 
     # Compute desired states using tail + artifacts (+ stickiness)
     odm_state, odm_reason = reconcile_state(
@@ -126,7 +159,7 @@ def reconcile_one(db, meta, dry_run=False, finalize=True):
 
     # Overall status
     overall_prev = meta.get("status")
-    failed_now = (odm_tail_state == "failed") or (oi_tail_state == "failed")
+    failed_now = bool(odm_failed_now or oi_failed_now)
     overall = recompute_overall(
         odm_state=odm_state,
         oi_state=oi_state,

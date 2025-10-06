@@ -1,0 +1,7 @@
+# Manifest for the drone pilot upload web application
+---
+name: "Drone Pilot Upload"
+description: "Web application for uploading and processing drone imagery data"
+category: "Interactive Apps"
+subcategory: "Custom Applications"
+version: "1.0.0"

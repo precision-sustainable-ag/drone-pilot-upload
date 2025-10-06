@@ -1,6 +1,6 @@
 PassengerEnabled on
-PassengerAppEnv development
-PassengerBaseURI /pun/dev/drone-pilot-backend
+PassengerAppEnv production
+PassengerBaseURI /pun/sys/drone-pilot-upload
+PassengerMaxRequestTime 6000
 RewriteEngine On
-RewriteRule ^/?frontend(/.*)?$ /pun/dev/drone-pilot-backend/frontend$1 [PT]
-
+RewriteRule ^/?frontend(/.*)?$ /pun/sys/drone-pilot-upload/frontend$1 [PT]

@@ -14,18 +14,33 @@ config: MutableMapping[str, Any] = {
     #                '/flights/',
     "mount_dir": "/rs1/shares/cals-research-station/",
     "code_dir": "/usr/local/usrapps/drones/drone-pilot-upload/",
-    "log_file": "/home/hpc.drone.svc/ondemand/data/drone-pilot-upload/cron_log.json",
+    "log_file": "/usr/local/usrapps/drones/drone-pilot-upload/logs/cron_log.json",
     "reconcile_log_file": "/usr/local/usrapps/drones/drone-pilot-upload/logs/reconcile.log",
     "python_exec": "/usr/local/usrapps/drones/drone-pilot-upload/backend/venv/bin/python3",
     "scratch_dir": "/share/drones/hpc.drone.svc/tmp",
     # ODM job defaults
-    "odm": {
+    "odm_image_limit": 300,
+    "odm_long": {
         "queue": "gpu",
         "n_cores": 8,
         "wall": "30:00",
         "mem_gb": 250,
         "pc_quality": "medium",
         "sif_file": "sif_files/odm_gpu-fixed.sif",
+        "compression": "LZW",
+        "resolution": 0.01,
+        "min_features": 10000,
+    },
+    "odm_short": {
+        "queue": "short_gpu",
+        "n_cores": 8,
+        "wall": "2:00",
+        "mem_gb": 250,
+        "pc_quality": "medium",
+        "sif_file": "sif_files/odm_gpu-fixed.sif",
+        "compression": "LZW",
+        "resolution": 0.01,
+        "min_features": 10000,
     },
     # Ortho Intel job defaults
     "ortho_intel": {
