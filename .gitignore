@@ -42,6 +42,7 @@ backend/logs/*
 ortho_processing/drone_ortho_intel.tar
 */*/__pycache__/*
 ortho_processing/__pycache__/
+ortho_processing/config.py
 
 logs/*
 sif_files/*
