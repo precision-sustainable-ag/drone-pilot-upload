@@ -2,14 +2,6 @@ from collections.abc import MutableMapping
 from typing import Any
 
 config: MutableMapping[str, Any] = {
-    # 'database_details': {
-    #     'host': 'localhost',
-    #     'username': 'admin',
-    #     'password': 'yolo',
-    #     'database': 'drone-pilot',
-    #     'auth_source': 'admin',
-    #     'collection': 'flight-information'
-    # },
     # 'flights_dir': '/rs1/shares/cals-research-station/sandhills/transfer'
     #                '/flights/',
     "mount_dir": "/rs1/shares/cals-research-station/",
@@ -50,14 +42,13 @@ config: MutableMapping[str, Any] = {
         "sif_file": "sif_files/drone_ortho_intel.sif",
     },
     "database_details": {
-        "host": "drone-pilot-test.bsgdbxt.mongodb.net",
-        "username": "mspinega",
-        "password": "KmLFKqC3V1fGLCDw",
-        "database": "flight-information",
-        "auth_source": "flight-information",
-        "collection": "flight-information",
-        "auth_mechanism": "SCRAM-SHA-1",
-        "connection_string": "mongodb+srv://admin:Children1921@drone-pilot-project.svxbuw.mongodb.net/?retryWrites=true&w=majority&appName=drone-pilot-project",
-        # 'connection_string' : 'mongodb+srv://mspinega:KmLFKqC3V1fGLCDw@drone-pilot-test.bsgdbxt.mongodb.net/?retryWrites=true&w=majority&appName=drone-pilot-test'
+        "host": "<host>",
+        "username": "<user>",
+        "password": "<pass>",
+        "database": "<db>",
+        "auth_source": "<auth source>",
+        "collection": "<collection>",
+        "auth_mechanism": "<auth mech>",
+        "connection_string": "<conn string>",
     },
 }
