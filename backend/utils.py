@@ -172,6 +172,8 @@ def createFolderStructure(flight_id, research_station, files,
     parent_folder = os.path.join(config['flight_data_folder'],
                                  research_station, 'flights', flight_id)
 
+    logging.info({'file_path': parent_folder})
+
     # create the required folders for storing the images and misc files
     if not os.path.exists(parent_folder):
         os.makedirs(parent_folder)
