@@ -1,0 +1,40 @@
+name: Publish Apptainer smoke-test image
+
+on:
+  push:
+    branches:
+      - feature/ceres-apptainer-refactor
+    paths:
+      - containers/apptainer-smoke-test/**
+      - .github/workflows/publish-apptainer-smoke-test.yml
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/precision-sustainable-ag/drone-pilot-upload/apptainer-smoke-test
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish
+        uses: docker/build-push-action@v6
+        with:
+          context: containers/apptainer-smoke-test
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
