@@ -1,0 +1,7 @@
+# Open OnDemand supplies both `host` and the `find_port` helper.
+#
+# Select an unused TCP port on the allocated compute node before starting the
+# application. The resulting `port` variable is subsequently available to the
+# application-launch and connection templates.
+
+port=$(find_port "${host}")

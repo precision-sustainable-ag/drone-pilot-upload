@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# This is the application payload executed inside the Slurm allocation.
+#
+# Open OnDemand has already obtained a compute node and selected an unused
+# network port before this script runs.
+
+set -euo pipefail
+
+# Repository containing both the demonstration application and the SIF.
+dpu="/project/dash_drone/user/stephen.amerige/projects/github/precision-sustainable-ag/drone-pilot-upload"
+
+sif="${dpu}/sif_files/ood-web-demo.sif"
+app="${dpu}/containers/ood-web-demo"
+
+# These messages appear in the Batch Connect session output.log and are useful
+# when debugging or demonstrating which Slurm allocation runs the application.
+echo "Starting Drone Pilot Upload Apptainer demo"
+echo "Compute node: $(hostname)"
+echo "Slurm job: ${SLURM_JOB_ID}"
+echo "Port: ${port}"
+echo "SIF: ${sif}"
+
+# Apptainer is supplied by the Ceres module environment.
+module load apptainer/1.4.1
+
+# Run the web application inside Apptainer.
+#
+# For this proof-of-concept, the Python runtime resides in the SIF while the
+# application source is bind-mounted read-only from the Git working tree.
+#
+# PORT is passed into the container so the application listens on the same
+# dynamically selected port that Open OnDemand will proxy to the browser.
+#
+# exec intentionally replaces this shell with Apptainer. This keeps the
+# application attached to the lifetime of the Slurm job: cancelling the OOD
+# session terminates the job and therefore the containerized application.
+
+exec apptainer exec \
+    --bind "${app}:/opt/ood-web-demo:ro" \
+    --env PORT="${port}" \
+    "${sif}" \
+    python /opt/ood-web-demo/app.py

@@ -1,0 +1,22 @@
+---
+# Select the Ceres cluster configuration known to Open OnDemand.
+#
+# The bc_* entries below are predefined Batch Connect form attributes.
+# Open OnDemand supplies their labels, widgets, validation, and scheduler
+# integration.
+
+cluster: "ceres"
+
+form:
+  # Slurm account used to charge the interactive allocation.
+  - bc_account
+
+  # Optional Slurm queue/partition selection. Leaving this blank currently
+  # allows Ceres to select its default partition.
+  - bc_queue
+
+  # Maximum lifetime requested for the interactive application session.
+  - bc_num_hours
+
+  # Number of compute nodes requested for the session.
+  - bc_num_slots
