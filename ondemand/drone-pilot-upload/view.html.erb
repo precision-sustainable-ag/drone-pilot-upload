@@ -1,0 +1,15 @@
+<%#
+  Open OnDemand renders this template after the service becomes ready.
+
+  `host` and `port` were established by the Batch Connect session. The /rnode/
+  URL is handled by the Open OnDemand reverse proxy, allowing the user's
+  browser to reach a service on an otherwise internal Ceres compute node.
+
+  The user therefore does not connect directly to the compute node.
+%>
+
+<a class="btn btn-primary"
+   href="/rnode/<%= host %>/<%= port %>/"
+   target="_blank">
+  Connect to Drone Pilot Upload Test
+</a>

@@ -1,0 +1,12 @@
+---
+# Explicitly select the Ceres scheduler configuration for job submission.
+#
+# Although cluster is also present in form.yml, this explicit setting was
+# required by the Ceres Open OnDemand environment during development.
+
+cluster: "ceres"
+
+batch_connect:
+  # "basic" is the normal Batch Connect template for a service that listens
+  # on a compute-node TCP port and is reached through the OOD reverse proxy.
+  template: "basic"

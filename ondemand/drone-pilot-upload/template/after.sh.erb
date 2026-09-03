@@ -1,0 +1,15 @@
+echo "Waiting for web server on ${host}:${port}..."
+
+if wait_until_port_used "${host}:${port}" 120; then
+    echo "Web server is listening on ${host}:${port}"
+else
+    echo "Timed out waiting for web server on ${host}:${port}"
+
+    # clean_up is supplied by Batch Connect. A readiness failure terminates
+    # the session rather than presenting a Connect button to a dead service.
+    clean_up 1
+fi
+
+# Allow a small additional interval for the application to settle before OOD
+# exposes the connection action.
+sleep 2

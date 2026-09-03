@@ -1,0 +1,14 @@
+---
+# Open OnDemand application metadata.
+#
+# The role identifies this as a Batch Connect application rather than a
+# conventional Passenger application. Open OnDemand therefore presents a
+# launch form and submits the application through the configured scheduler.
+
+name: Drone Pilot Upload Test
+category: Interactive Apps
+subcategory: Servers
+role: batch_connect
+
+description: |
+  Minimal Ceres Batch Connect test for Drone Pilot Upload.
