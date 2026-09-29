@@ -47,3 +47,15 @@ ortho_processing/config.py
 logs/*
 sif_files/*
 ortho_processing/config.py
+
+tmp/*
+*.err
+*.out
+
+# Generated flight-analysis artifacts
+scripts/flight-document.txt
+scripts/flight-image-map.csv
+scripts/flight-path.csv
+scripts/flight-path.png
+scripts/opensfm-match-pairs.csv
+scripts/opensfm-match-graph.png
