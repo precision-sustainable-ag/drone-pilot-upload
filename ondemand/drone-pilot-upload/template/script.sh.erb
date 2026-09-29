@@ -15,6 +15,24 @@ echo "SIF: ${sif}"
 
 module load apptainer/1.4.1
 
+### SECRETS BEGIN
+secrets="${HOME}/.config/drone-pilot-upload/secrets.env"
+
+if [[ ! -r "${secrets}" ]]; then
+    echo "MongoDB secrets file is not readable: ${secrets}" >&2
+    exit 1
+fi
+
+source "${secrets}"
+
+if [[ -z "${DPU_MONGODB_CONNECTION_STRING:-}" ]]; then
+    echo "DPU_MONGODB_CONNECTION_STRING is not defined" >&2
+    exit 1
+fi
+### SECRETS END
+
 exec apptainer run \
     --env PORT="${port}" \
+    --env DPU_FLIGHT_DATA_FOLDER=/project/dash_drone/user/stephen.amerige/dpu-test/output \
+    --env DPU_MONGODB_CONNECTION_STRING="${DPU_MONGODB_CONNECTION_STRING}" \
     "${sif}"
