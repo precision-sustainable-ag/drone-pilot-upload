@@ -25,7 +25,7 @@ class CustomRequest(Request):
 #     traces_sample_rate=1.0,debug=True,environment='test'
 # )
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=None)
 app.request_class = CustomRequest
 CORS(app)
 

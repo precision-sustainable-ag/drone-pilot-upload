@@ -5,10 +5,10 @@
 # conventional Passenger application. Open OnDemand therefore presents a
 # launch form and submits the application through the configured scheduler.
 
-name: Drone Pilot Upload Test
+name: Drone Pilot Upload
 category: Interactive Apps
 subcategory: Servers
 role: batch_connect
 
 description: |
-  Minimal Ceres Batch Connect test for Drone Pilot Upload.
+  Drone Pilot Upload application running on Ceres through Slurm and Apptainer.

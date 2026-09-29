@@ -1,0 +1,60 @@
+Bootstrap: docker
+From: node:22-bookworm-slim
+
+%labels
+    Author Precision Sustainable Agriculture
+    Description Drone Pilot Upload Ceres development image
+
+%environment
+    export PYTHONDONTWRITEBYTECODE=1
+    export PYTHONUNBUFFERED=1
+    export PATH=/opt/venv/bin:$PATH
+
+%files
+    frontend /opt/src/frontend
+    backend /opt/src/backend
+
+%post
+    set -eu
+
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        default-jre-headless \
+        libimage-exiftool-perl \
+        python3 \
+        python3-venv \
+        python3-pip
+
+    rm -rf /var/lib/apt/lists/*
+
+    python3 -m venv /opt/venv
+    /opt/venv/bin/python -m pip install --upgrade pip
+
+    /opt/venv/bin/python -m pip install --no-cache-dir \
+        -r /opt/src/backend/requirements.txt
+
+    cd /opt/src/frontend
+
+    npm install
+
+    export PUBLIC_URL=.
+    export REACT_APP_API_URL=./imgproc
+
+    npm run build
+
+    mkdir -p /opt/drone-pilot-upload/backend
+    mkdir -p /opt/drone-pilot-upload/frontend
+
+    cp -a /opt/src/backend/. /opt/drone-pilot-upload/backend/
+    cp -a /opt/src/frontend/build /opt/drone-pilot-upload/frontend/build
+
+    mkdir -p /tmp/drone-pilot-upload
+
+%runscript
+    cd /opt/drone-pilot-upload/backend
+
+    exec /opt/venv/bin/gunicorn \
+        --bind "0.0.0.0:${PORT:-8000}" \
+        --workers 1 \
+        --timeout 0 \
+        app:app
