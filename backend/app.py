@@ -171,5 +171,5 @@ def acceptUpload():
 
 
 if __name__ == '__main__':
-    utils.setup_logging()
+#   utils.setup_logging()
     app.run()
