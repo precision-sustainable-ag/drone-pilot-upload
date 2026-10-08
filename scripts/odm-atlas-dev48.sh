@@ -23,8 +23,43 @@ images_dir="${data_root}/images-renamed-subset48"
 output_dir="${data_root}/output-dev48-atlas"
 tmp_dir="${data_root}/tmp-dev48-atlas"
 sif="${dpu}/sif_files/odm-3.6.2-gpu.sif"
+odm_image="docker://opendronemap/odm:3.6.2-gpu"
+
+########################################################################
+# Ensure required container image is available.
+########################################################################
 
 module load apptainer/1.4.3
+
+mkdir -p "$(dirname "$sif")"
+
+if [[ ! -r "$sif" ]]; then
+    echo "ODM SIF not found:"
+    echo "  $sif"
+    echo
+    echo "Attempting to build it from:"
+    echo "  $odm_image"
+    echo
+
+    if ! apptainer build --fakeroot "$sif" "$odm_image"; then
+        echo >&2
+        echo "ERROR: Failed to build ODM SIF" >&2
+        echo "  Source: $odm_image" >&2
+        echo "  Target: $sif" >&2
+        exit 2
+    fi
+fi
+
+[[ -r "$sif" ]] || {
+    echo "ERROR: Required ODM SIF is unavailable: $sif" >&2
+    exit 2
+}
+
+if ! apptainer inspect "$sif" >/dev/null 2>&1; then
+    echo "ERROR: ODM SIF exists but is not a valid Apptainer image:" >&2
+    echo "  $sif" >&2
+    exit 2
+fi
 
 echo "Starting ODM Atlas Dev48 Run"
 echo "Job ID: ${SLURM_JOB_ID}"

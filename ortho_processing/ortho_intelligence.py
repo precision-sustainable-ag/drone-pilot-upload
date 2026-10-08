@@ -162,7 +162,7 @@ def process_in_chunks(rasterio_dataset, index_folder, chunk_size=512):
                 gli_dest.write(gli.astype(rasterio.float32), 1, window=window)
                 del red_band, blue_band, green_band, vari, gli
 
-    print("NDVI and LAI files written in chunks")
+    print("NDVI and GLI files written in chunks")
 
 
 if __name__ == "__main__":
