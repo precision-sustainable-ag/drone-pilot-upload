@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#SBATCH --job-name=odm-atlas-dev48
+#SBATCH --job-name=odm-atlas-dev24
 #SBATCH --account=dash_drone
 #SBATCH --partition=gpu-l40s
 #SBATCH --nodes=1
@@ -9,8 +9,8 @@
 #SBATCH --mem=64G
 #SBATCH --gres=gpu:l40s:1
 #SBATCH --time=01:00:00
-#SBATCH --output=odm-atlas-dev48-%j.out
-#SBATCH --error=odm-atlas-dev48-%j.err
+#SBATCH --output=odm-atlas-dev24-%j.out
+#SBATCH --error=odm-atlas-dev24-%j.err
 
 set -euo pipefail
 
@@ -19,9 +19,9 @@ flight_id="e48d496c-e7d1-4345-8fc2-42fbc78b3b28"
 dpu="/project/dash_drone/user/stephen.amerige/projects/github/precision-sustainable-ag/drone-pilot-upload"
 data_root="/project/dash_drone/user/stephen.amerige/dpu-data/odm/${flight_id}"
 
-images_dir="${data_root}/images-renamed-subset48"
-output_dir="${data_root}/output-dev48-atlas"
-tmp_dir="${data_root}/tmp-dev48-atlas"
+images_dir="${data_root}/images-renamed-subset24"
+output_dir="${data_root}/output-dev24-atlas"
+tmp_dir="${data_root}/tmp-dev24-atlas"
 sif="${dpu}/sif_files/odm-3.6.2-gpu.sif"
 odm_image="docker://opendronemap/odm:3.6.2-gpu"
 
@@ -61,7 +61,7 @@ if ! apptainer inspect "$sif" >/dev/null 2>&1; then
     exit 2
 fi
 
-echo "Starting ODM Atlas Dev48 Run"
+echo "Starting ODM Atlas Dev24 Run"
 echo "Job ID: ${SLURM_JOB_ID}"
 echo "Host: $(hostname)"
 echo "Images: ${images_dir}"
@@ -72,7 +72,7 @@ echo "Image count: $(find "${images_dir}" -maxdepth 1 -type f | wc -l)"
 
 #
 # Start with clean processing directories so this run cannot reuse
-# artifacts from a previous dev48 execution.
+# artifacts from a previous dev24 execution.
 #
 rm -rf "${output_dir}"
 rm -rf "${tmp_dir}"
@@ -81,6 +81,7 @@ mkdir -p "${output_dir}/code/images"
 mkdir -p "${tmp_dir}"
 
 apptainer run \
+    --cleanenv \
     --nv \
     --bind "${images_dir}:${output_dir}/code/images:ro","${tmp_dir}" \
     --writable-tmpfs \
@@ -97,7 +98,53 @@ apptainer run \
     --pc-quality medium \
     --max-concurrency 4
 
+########################################################
+# Generate vegetation indices from the ODM orthophoto. #
+########################################################
+
+orthophoto="${output_dir}/code/odm_orthophoto/odm_orthophoto.tif"
+veg_output="${output_dir}/veg_indices"
+python="/project/dash_drone/user/stephen.amerige/conda/drone-pilot-upload/bin/python"
+
+if [[ ! -s "$orthophoto" ]]; then
+    echo "ERROR: ODM orthophoto is missing or empty:" >&2
+    echo "  $orthophoto" >&2
+    exit 3
+fi
+
+if [[ ! -x "$python" ]]; then
+    echo "ERROR: Python interpreter is unavailable:" >&2
+    echo "  $python" >&2
+    exit 3
+fi
+
 echo
-echo "ODM Atlas Dev48 Run completed successfully"
+echo "Starting vegetation-index processing"
+echo "Orthophoto: ${orthophoto}"
+echo "Output: ${veg_output}"
+
+"$python" \
+    "${dpu}/ortho_processing/ortho_intelligence.py" \
+    "$orthophoto" \
+    "$output_dir"
+
+######################################
+# Validate vegetation-index outputs. #
+######################################
+
+for index in vari gli; do
+    artifact="${veg_output}/${index}_image.tif"
+
+    if [[ ! -s "$artifact" ]]; then
+        echo "ERROR: Missing or empty vegetation-index artifact:" >&2
+        echo "  $artifact" >&2
+        exit 4
+    fi
+
+    echo "Validated: $artifact"
+done
+
+echo
+echo "ODM and vegetation-index processing completed successfully"
 echo "Orthophoto:"
 echo "  ${output_dir}/code/odm_orthophoto/odm_orthophoto.tif"
