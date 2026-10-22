@@ -33,6 +33,8 @@ fi
 
 exec apptainer run \
     --env PORT="${port}" \
-    --env DPU_FLIGHT_DATA_FOLDER=/project/dash_drone/user/stephen.amerige/dpu-test/output \
+    --env DPU_DATA_ROOT=/project/dash_drone/user/stephen.amerige/dpu-data \
+    --env DPU_ID_DIR=site-id \
+    --env DPU_NAME_DIR=site-name \
     --env DPU_MONGODB_CONNECTION_STRING="${DPU_MONGODB_CONNECTION_STRING}" \
     "${sif}"

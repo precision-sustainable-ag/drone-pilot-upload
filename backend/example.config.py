@@ -1,11 +1,26 @@
+import os
+
 config = {
-    'flight_data_folder': '/mnt/oit-research-storage/',
-    # 'flight_data_folder': '/Users/jbshah/_p/test/backend_storage/flights/',
-    # 'flight_data_folder': '/Users/jbshah/_p/test/backend_storage_v2/',
-    #  TODO: review usage of this field
+    'data_root': os.environ.get(
+        'DPU_DATA_ROOT',
+        '/tmp/drone-pilot-upload/data'
+    ),
+    'id_dir': os.environ.get(
+        'DPU_ID_DIR',
+        'site-id'
+    ),
+    'name_dir': os.environ.get(
+        'DPU_NAME_DIR',
+        'site-name'
+    ),
+
+    'flight_data_folder': os.environ.get(
+        'DPU_FLIGHT_DATA_FOLDER',
+        '/tmp/drone-pilot-upload/flights'
+    ),
+
     'sensor_information': {
         'Altum-PT': {
-            # this is for the multispec sensor
             'sensor_width': 7.12,
             'image_width_exif_tag': 'EXIF:ImageWidth'
         },
@@ -14,15 +29,29 @@ config = {
             'image_width_exif_tag': 'EXIF:ExifImageWidth'
         }
     },
+
     'database_details': {
-        'host': 'localhost',
-        'username': 'admin',
-        'password': 'yolo',
-        'database': 'drone-pilot',
-        'auth_source': 'admin',
-        'collection': 'flight-information',
-        'connection_string': 'example string'
+        'host': os.environ.get('DPU_MONGODB_HOST', 'localhost'),
+        'username': os.environ.get('DPU_MONGODB_USERNAME', ''),
+        'password': os.environ.get('DPU_MONGODB_PASSWORD', ''),
+        'database': os.environ.get(
+            'DPU_MONGODB_DATABASE',
+            'flight-information'
+        ),
+        'auth_source': os.environ.get(
+            'DPU_MONGODB_AUTH_SOURCE',
+            'flight-information'
+        ),
+        'collection': os.environ.get(
+            'DPU_MONGODB_COLLECTION',
+            'flight-information'
+        ),
+        'connection_string': os.environ.get(
+            'DPU_MONGODB_CONNECTION_STRING',
+            ''
+        )
     },
+
     'research_station_mapping': {
         "Border Belt Tobacco Research Station": "border",
         "Central Crops Research Station": "central",
@@ -44,6 +73,18 @@ config = {
         "Umstead Research Station": "umstead",
         "Virtual Research Station": "virtual"
     },
-    'log_file': './logs/log_',
-    'max_file_count': 13000
+
+    'log_file': os.environ.get(
+        'DPU_LOG_FILE',
+        '/tmp/drone-pilot-upload/app.log'
+    ),
+
+    'exif_tool_path': os.environ.get(
+        'DPU_EXIF_TOOL_PATH',
+        '/usr/bin/exiftool'
+    ),
+
+    'max_file_count': int(
+        os.environ.get('DPU_MAX_FILE_COUNT', '13000')
+    )
 }

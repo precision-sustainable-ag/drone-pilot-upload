@@ -12,6 +12,7 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
 from pyzxing import BarCodeReader
+from storage import flight_directory
 
 import app
 from config import config
@@ -152,7 +153,7 @@ def calcBands(flight_id, files):
     return num_bands
 
 
-def createFolderStructure(flight_id, research_station, files,
+def createFolderStructure(flight_id, organization_id, files,
                           check_radiance_panels=False):
     """
     creates the folder structure for flight data storage
@@ -169,8 +170,7 @@ def createFolderStructure(flight_id, research_station, files,
         'service': 'create folder structure',
         'message': 'processing started'
     })
-    parent_folder = os.path.join(config['flight_data_folder'],
-                                 research_station, 'flights', flight_id)
+    parent_folder = flight_directory(organization_id, flight_id)
 
     logging.info({'file_path': parent_folder})
 

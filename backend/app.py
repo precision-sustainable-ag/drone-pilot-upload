@@ -8,6 +8,7 @@ from flask import send_from_directory
 import os
 import utils
 from config import config
+from storage import organization_id_for_alias
 
 
 # import sentry_sdk
@@ -78,6 +79,7 @@ def acceptUpload():
             metadata = json.loads(flask.request.form['metadata'])
             research_station = config['research_station_mapping'][
                 metadata['research_station']]
+            organization_id = organization_id_for_alias(research_station)
             files = sorted(
                 [file for file in flask.request.files.getlist("files") if
                  not file.filename.lower().startswith('.')],
@@ -113,7 +115,7 @@ def acceptUpload():
                                       status=status_code)
 
             flight_details = utils.createFolderStructure(flight_id,
-                                                         research_station,
+                                                         organization_id,
                                                          files,
                                                          check_radiance_panels)
 
@@ -128,6 +130,7 @@ def acceptUpload():
             flight_details['cloudiness'] = metadata['cloudiness']
             flight_details['comments'] = metadata['comments']
             flight_details['research_station'] = research_station
+            flight_details['organization_id'] = organization_id
             flight_details[
                 'display_name'] = f"{flight_details['mission_start_time']}" \
                                   f"-{flight_details['cloudiness']}-" \
