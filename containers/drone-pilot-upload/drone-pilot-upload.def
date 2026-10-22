@@ -46,6 +46,7 @@ From: node:22-bookworm-slim
     mkdir -p /opt/drone-pilot-upload/frontend
 
     cp -a /opt/src/backend/. /opt/drone-pilot-upload/backend/
+    cp /opt/drone-pilot-upload/backend/example.config.py /opt/drone-pilot-upload/backend/config.py
     cp -a /opt/src/frontend/build /opt/drone-pilot-upload/frontend/build
 
     mkdir -p /tmp/drone-pilot-upload
