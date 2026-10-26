@@ -7,8 +7,8 @@ Usage:
 Directives:
   pending                 List uploaded flights awaiting MongoDB registration (read-only)
   submit                  Register pending flights and submit ODM jobs (changes state)
-  status \[job-id]        Show active Slurm jobs, or accounting for one job (read-only)
-  reconcile \[--dry-run]  Synchronize Slurm results with MongoDB (changes state)
+  status [job-id]         Show active Slurm jobs, or accounting for one job (read-only)
+  reconcile [--dry-run]   Synchronize Slurm results with MongoDB (changes state)
   help                    Display this help (read-only)
 
 Typical workflow:
