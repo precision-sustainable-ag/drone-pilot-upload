@@ -405,8 +405,51 @@ def getExifInfo(flight_details):
 
 
 def insertDb(file_details):
-    database_details = config['database_details']
-    client = pymongo.MongoClient(database_details['connection_string'])
-    collection = client[database_details['database']][database_details[
-        'collection']]
+    if os.environ.get("DPU_MONGODB_MODE") == "queue":
+        from pathlib import Path
+        from tempfile import NamedTemporaryFile
+        from bson import json_util
+
+        parent = Path(flight_directory(
+            file_details["organization_id"],
+            file_details["flight_id"]
+        ))
+
+        parent.mkdir(parents=True, exist_ok=True)
+        pending = parent / "mongo-registration.pending.json"
+
+        temporary = None
+        try:
+            with NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=parent,
+                prefix=".mongo-registration-",
+                delete=False
+            ) as f:
+                temporary = f.name
+                f.write(json_util.dumps(file_details))
+                f.flush()
+                os.fsync(f.fileno())
+
+            os.replace(temporary, pending)
+
+        finally:
+            if temporary and os.path.exists(temporary):
+                os.unlink(temporary)
+
+        logging.info({
+            "flight_id": file_details["flight_id"],
+            "service": "database upload",
+            "message": "registration queued"
+        })
+        return
+
+    database_details = config["database_details"]
+    client = pymongo.MongoClient(
+        database_details["connection_string"]
+    )
+    collection = client[database_details["database"]][
+        database_details["collection"]
+    ]
     collection.insert_one(file_details)

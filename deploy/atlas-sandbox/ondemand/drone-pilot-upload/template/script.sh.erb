@@ -5,7 +5,7 @@
 set -euo pipefail
 
 dpu="/project/dash_drone/user/stephen.amerige/projects/github/precision-sustainable-ag/drone-pilot-upload"
-sif="${dpu}/sif_files/drone-pilot-upload-20261022.sif"
+sif="${dpu}/sif_files/drone-pilot-upload-20261026.sif"
 
 echo "Starting Drone Pilot Upload"
 echo "Compute node: $(hostname)"
@@ -16,7 +16,7 @@ echo "SIF: ${sif}"
 module load apptainer/1.4.3
 
 ### SECRETS BEGIN
-secrets="${HOME}/.config/drone-pilot-upload/secrets.env"
+secrets="${DPU_SECRETS_FILE:-${HOME}/.config/drone-pilot-upload/atlas-sandbox/secrets.env}"
 
 if [[ ! -r "${secrets}" ]]; then
     echo "MongoDB secrets file is not readable: ${secrets}" >&2
@@ -31,10 +31,28 @@ if [[ -z "${DPU_MONGODB_CONNECTION_STRING:-}" ]]; then
 fi
 ### SECRETS END
 
+### APPLICATION LOGGING
+log_file="/project/dash_drone/user/stephen.amerige/dpu-data/logs/atlas-sandbox/app.log"
+
+mkdir -p "$(dirname "${log_file}")"
+
+if [[ ! -w "$(dirname "${log_file}")" ]]; then
+    echo "Application log directory is not writable" >&2
+    exit 1
+fi
+
+### MONGODB CREDENTIAL FORWARDING
+export APPTAINERENV_DPU_MONGODB_CONNECTION_STRING="${DPU_MONGODB_CONNECTION_STRING}"
+unset DPU_MONGODB_CONNECTION_STRING
+
+### LAUNCH APPLICATION
 exec apptainer run \
     --env PORT="${port}" \
     --env DPU_DATA_ROOT=/project/dash_drone/user/stephen.amerige/dpu-data \
     --env DPU_ID_DIR=site-id \
     --env DPU_NAME_DIR=site-name \
-    --env DPU_MONGODB_CONNECTION_STRING="${DPU_MONGODB_CONNECTION_STRING}" \
+    --env DPU_MONGODB_DATABASE=drone-pilot-atlas-sandbox \
+    --env DPU_MONGODB_COLLECTION=flight-information \
+    --env DPU_MONGODB_MODE=queue \
+    --env DPU_LOG_FILE="${log_file}" \
     "${sif}"
