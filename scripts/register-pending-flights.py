@@ -192,9 +192,17 @@ def main():
         for pending, done, record in valid:
             flight_id = record["flight_id"]
             try:
+                # Initialize only new records; never reset a flight's
+                # status when a registration attempt is retried.
+                initial_document = dict(record)
+                initial_document["status"] = "registered"
+                initial_document["stages"] = {
+                    "odm": {"state": "pending"},
+                    "ortho_intel": {"state": "pending"},
+                }
                 collection.update_one(
                     {"flight_id": flight_id},
-                    {"$setOnInsert": record},
+                    {"$setOnInsert": initial_document},
                     upsert=True,
                 )
                 existing = collection.find_one({"flight_id": flight_id})
