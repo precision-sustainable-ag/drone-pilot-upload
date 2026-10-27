@@ -10,18 +10,20 @@ Usage:
   atlas.sh <directive> [arguments]
 
 Directives:
-  pending                List uploaded flights awaiting MongoDB registration (read-only)
-  submit                 Register pending flights and submit ODM jobs (changes state)
-  status [job-id]        Show active Slurm jobs, or accounting for one job (read-only)
-  reconcile [--dry-run]  Synchronize Slurm results with MongoDB (changes state)
-  help                   Display this help (read-only)
+  pending                         List uploaded flights awaiting MongoDB registration (read-only)
+  submit                          Register pending flights and submit ODM jobs (changes state)
+  status [job-id]                 Show active Slurm jobs, or accounting for one job (read-only)
+  status details [job-id]         Show the latest/specified ODM job and its logs (read-only)
+  delete FLIGHT_GUID [--execute]  Preview or delete one sandbox flight (MongoDB + files)
+  reconcile [--dry-run]           Synchronize Slurm results with MongoDB (changes state)
+  help                            Display this help (read-only)
 
 Typical workflow:
   1. Upload images through the Open OnDemand application.
   2. atlas.sh pending
   3. atlas.sh submit
   4. atlas.sh status
-  5. atlas.sh status <job-id>
+  5. atlas.sh status details [job-id]
   6. atlas.sh reconcile --dry-run
   7. atlas.sh reconcile
 
@@ -29,6 +31,10 @@ Examples:
   bash scripts/atlas.sh pending
   bash scripts/atlas.sh submit
   bash scripts/atlas.sh status 21033567
+  bash scripts/atlas.sh status details
+  bash scripts/atlas.sh status details 21033567
+  bash scripts/atlas.sh delete FLIGHT_GUID
+  bash scripts/atlas.sh delete FLIGHT_GUID --execute
   bash scripts/atlas.sh reconcile --dry-run
   bash scripts/atlas.sh reconcile
 
@@ -37,6 +43,7 @@ Notes:
     MongoDB connectivity, access to project storage, and Slurm tools.
   - Uploading images alone does not submit an ODM job.
   - A job that has finished is not shown by squeue; use 'status <job-id>'.
+  - 'status details' selects the latest submitted ODM job by receipt timestamp.
   - No directive automatically runs the next workflow step.
 HELP
 }
@@ -64,12 +71,15 @@ atlas_submit() {
 atlas_status() {
     local script_dir=$1
     shift
-    if (( $# == 0 )); then
+    if (( $# > 0 )) && [[ $1 == details ]]; then
+        shift
+        python3 "$script_dir/show-atlas-status-details.py" "$@"
+    elif (( $# == 0 )); then
         squeue -u "$USER"
     elif (( $# == 1 )) && [[ $1 =~ ^[0-9]+$ ]]; then
         sacct -j "$1" --format=JobID,JobName,State,ExitCode,Elapsed
     else
-        printf 'Usage: atlas.sh status [job-id]\n' >&2
+        printf 'Usage: atlas.sh status [job-id] | status details [job-id]\n' >&2
         return 2
     fi
 }
@@ -82,6 +92,12 @@ atlas_reconcile() {
         return 2
     fi
     bash "$script_dir/reconcile-atlas-flights.sh" "$@"
+}
+
+atlas_delete() {
+    local script_dir=$1
+    shift
+    bash "$script_dir/delete-atlas-flight.sh" "$@"
 }
 
 main() {

@@ -1,0 +1,73 @@
+name: Python 3.14 compatibility
+
+on:
+  push:
+    branches:
+      - feature/ceres-apptainer-refactor
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - name: Install Java and ExifTool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends default-jre-headless libimage-exiftool-perl
+      - name: Install current pip
+        run: python -m pip install --upgrade pip==26.2.2
+      - name: Resolve and install backend dependencies
+        run: 'python -m pip install --only-binary=:all: -r backend/requirements.txt'
+      - name: Verify dependency consistency
+        run: python -m pip check
+      - name: Prepare safe backend configuration
+        run: cp backend/example.config.py backend/config.py
+      - name: Smoke test active backend imports, HTTP health, and geospatial operations
+        env:
+          PYTHONPATH: backend
+        run: |
+          python - <<'PY'
+          import json
+          import numpy
+          import pandas
+          import geopandas
+          import pyproj
+          import shapely
+          from shapely.geometry import box, mapping
+          import flask
+          import pymongo
+          import exiftool
+          from pyzxing import BarCodeReader
+          from app import app
+
+          with app.test_client() as client:
+              response = client.get('/ping')
+              assert response.status_code == 200, response.status_code
+              assert response.get_json()['status'] == 'healthy'
+
+          df = pandas.DataFrame({'Longitude': [-78.65, -78.64], 'Latitude': [35.78, 35.79]})
+          geo = geopandas.GeoDataFrame(df, geometry=geopandas.points_from_xy(
+              df.Longitude, df.Latitude), crs='EPSG:4326')
+          geometry = [json.loads(item) for item in shapely.to_geojson(geo.geometry.tolist())]
+          assert len(geometry) == 2
+          xmin, ymin, xmax, ymax = geo.total_bounds.tolist()
+          corners = list(mapping(box(xmin, ymin, xmax, ymax))['coordinates'][0])[:4]
+          projector = pyproj.Transformer.from_crs('EPSG:4326', 'EPSG:3857', always_xy=True)
+          transformed = [projector.transform(*point) for point in corners]
+          assert len(transformed) == 4
+          assert callable(BarCodeReader)
+          print('Python 3.14 backend health and geometry smoke tests passed')
+          PY

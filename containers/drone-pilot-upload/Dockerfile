@@ -18,7 +18,7 @@ RUN npm run build
 
 
 # Runtime image.
-FROM python:3.11-slim-bookworm
+FROM python:3.14-slim-trixie
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -33,7 +33,8 @@ WORKDIR /opt/drone-pilot-upload
 
 COPY backend/requirements.txt backend/requirements.txt
 
-RUN python -m pip install --no-cache-dir \
+RUN python -m pip install --no-cache-dir --upgrade pip==26.2.2 \
+    && python -m pip install --no-cache-dir \
         -r backend/requirements.txt
 
 COPY backend/ backend/
