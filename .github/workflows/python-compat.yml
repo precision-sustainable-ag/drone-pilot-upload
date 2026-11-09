@@ -3,6 +3,8 @@ name: Python 3.14 compatibility
 on:
   push:
     branches:
+      - main
+      - develop
       - feature/ceres-apptainer-refactor
   pull_request:
   workflow_dispatch:

@@ -4,6 +4,7 @@ Stage: frontend
 
 %files
     frontend/package.json /opt/src/frontend/package.json
+    frontend/package-lock.json /opt/src/frontend/package-lock.json
     frontend/public /opt/src/frontend/public
     frontend/src /opt/src/frontend/src
 
@@ -11,7 +12,7 @@ Stage: frontend
     set -eu
 
     cd /opt/src/frontend
-    npm install --no-audit --no-fund
+    npm ci --no-audit --no-fund
 
     export PUBLIC_URL=.
     export REACT_APP_API_URL=./imgproc
