@@ -125,7 +125,7 @@ def main():
                     f"--partition={args.partition}",
                     f"--gres={args.gres}",
                     f"--job-name=dpu-{flight}",
-                    f"--chdir={repo}",
+                    f"--chdir={path.parent}",
                     f"--output={path.parent}/odm-slurm-%j.out",
                     f"--error={path.parent}/odm-slurm-%j.err",
                     str(job_script), org, flight,
