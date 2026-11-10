@@ -15,6 +15,7 @@ Directives:
   status [job-id]                 Show active Slurm jobs, or accounting for one job (read-only)
   status details [job-id]         Show the latest/specified ODM job and its logs (read-only)
   delete FLIGHT_GUID [--execute]  Preview or delete one sandbox flight (MongoDB + files)
+  preview FLIGHT_GUID             Generate orthophoto, VARI, and GLI PNG previews
   reconcile [--dry-run]           Synchronize Slurm results with MongoDB (changes state)
   help                            Display this help (read-only)
 
@@ -35,10 +36,12 @@ Examples:
   bash scripts/atlas.sh status details 21033567
   bash scripts/atlas.sh delete FLIGHT_GUID
   bash scripts/atlas.sh delete FLIGHT_GUID --execute
+  bash scripts/atlas.sh preview FLIGHT_GUID
   bash scripts/atlas.sh reconcile --dry-run
   bash scripts/atlas.sh reconcile
 
 Notes:
+  - Generate previews within an interactive compute allocation.
   - Submit and reconcile require an authorized Atlas login node with
     MongoDB connectivity, access to project storage, and Slurm tools.
   - Uploading images alone does not submit an ODM job.
@@ -98,6 +101,22 @@ atlas_delete() {
     local script_dir=$1
     shift
     bash "$script_dir/delete-atlas-flight.sh" "$@"
+}
+
+atlas_preview() {
+    local script_dir=$1
+    shift
+    if (( $# != 1 )); then
+        printf 'Usage: atlas.sh preview FLIGHT_GUID\n' >&2
+        return 2
+    fi
+    local python_bin="${DPU_PYTHON:-/project/dash_drone/user/stephen.amerige/conda/drone-pilot-upload/bin/python}"
+    [[ -x "$python_bin" ]] || {
+        printf 'Preview Python not executable: %s\n' "$python_bin" >&2
+        return 1
+    }
+    "$python_bin" "$script_dir/generate-atlas-previews.py" "$1" \
+        --data-root "${DPU_DATA_ROOT:-/project/dash_drone/user/stephen.amerige/dpu-data}"
 }
 
 main() {

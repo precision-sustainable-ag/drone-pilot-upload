@@ -125,6 +125,39 @@ def plan(path):
     return flight, org, payload
 
 
+def stored_value(document, dotted_key):
+    """Read a field managed by this script, including dotted MongoDB paths."""
+    value = document
+    for key in dotted_key.split('.'):
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+    return value
+
+
+def same_value(actual, expected):
+    """Compare BSON dates as UTC milliseconds (MongoDB drops microseconds)."""
+    if isinstance(expected, datetime):
+        if not isinstance(actual, datetime):
+            return False
+        def to_bson_utc(value):
+            if value.tzinfo is None:  # PyMongo decodes UTC dates as naive by default.
+                value = value.replace(tzinfo=timezone.utc)
+            value = value.astimezone(timezone.utc)
+            return value.replace(microsecond=(value.microsecond // 1000) * 1000)
+        return to_bson_utc(actual) == to_bson_utc(expected)
+    return actual == expected
+
+
+def is_current(existing, payload):
+    """Ignore the refreshed observation timestamp; compare only owned fields."""
+    return all(
+        same_value(stored_value(existing, field), value)
+        for field, value in payload.items()
+        if field != 'processing.observed_at'
+    )
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--data-root', required=True, type=Path)
@@ -141,25 +174,26 @@ def main():
         if args.flight_id and path.parent.name != args.flight_id:
             continue
         try:
-            flight, org, payload = plan(path)
-            planned.append((flight, org, payload))
-            print(f"{'WOULD SYNC' if args.dry_run else 'READY'}: {flight}: {payload['status']}", flush=True)
+            planned.append(plan(path))
         except Exception as exc:
             failures += 1
             print(f'ERROR: {path}: {exc}', file=sys.stderr, flush=True)
 
-    if args.dry_run:
-        print(f'Dry run: {len(planned)} updates planned; {failures} errors', flush=True)
-        return int(bool(failures))
     if not planned:
+        print(f'Reconciliation: 0 {"updates needed" if args.dry_run else "updated"}; '
+              f'0 current; 0 preserved; {failures} errors', flush=True)
         return int(bool(failures))
 
+    # A dry run must read the same sandbox records as an actual reconciliation,
+    # but it must never write them.
     if (os.environ.get('DPU_MONGODB_DATABASE') != DB or
             os.environ.get('DPU_MONGODB_COLLECTION') != COLLECTION):
-        ap.error('Refusing to write outside the dedicated Atlas sandbox collection')
+        ap.error('Refusing to access outside the dedicated Atlas sandbox collection')
     uri = os.environ.get('DPU_MONGODB_CONNECTION_STRING')
     if not uri:
         ap.error('Missing DPU_MONGODB_CONNECTION_STRING')
+
+    updates = current = preserved = 0
     client = MongoClient(uri, serverSelectionTimeoutMS=10000)
     try:
         col = client[DB][COLLECTION]
@@ -174,7 +208,16 @@ def main():
                 if prior_job is not None and str(prior_job) != payload['processing.slurm_job_id']:
                     raise ValueError('Existing processing job differs; explicit retry handling required')
                 if existing.get('status') == 'processed' and payload['status'] != 'processed':
-                    print(f'PRESERVED: {flight}: processed (not demoting)', flush=True)
+                    preserved += 1
+                    print(f'PRESERVED: {flight}: MongoDB completion retained (not demoting)', flush=True)
+                    continue
+                if is_current(existing, payload):
+                    current += 1
+                    print(f'CURRENT: {flight}: MongoDB matches verified results', flush=True)
+                    continue
+                if args.dry_run:
+                    updates += 1
+                    print(f'UPDATE NEEDED: {flight}: MongoDB differs from verified results', flush=True)
                     continue
                 result = col.update_one(
                     {'_id': existing['_id'], 'organization_id': org},
@@ -182,13 +225,25 @@ def main():
                 )
                 if result.matched_count != 1:
                     raise RuntimeError('MongoDB update did not match flight')
-                print(f"SYNCED: {flight}: {payload['status']}", flush=True)
+                updates += 1
+                print(f'UPDATED: {flight}: MongoDB synchronized with verified results', flush=True)
             except Exception as exc:
                 failures += 1
-                print(f'FAILED: {flight}: {exc}', file=sys.stderr, flush=True)
+                print(f'ERROR: {flight}: {exc}', file=sys.stderr, flush=True)
     finally:
         client.close()
-    print(f'MongoDB reconciliation errors: {failures}', flush=True)
+
+    count_label = 'updates needed' if args.dry_run else 'updated'
+    print(f'Reconciliation: {updates} {count_label}; {current} current; '
+          f'{preserved} preserved; {failures} errors', flush=True)
+    if args.dry_run:
+        print('MongoDB unchanged.', flush=True)
+        if failures:
+            print('Resolve errors before reconciliation.', flush=True)
+        elif updates:
+            print('Next action: scripts/atlas.sh reconcile', flush=True)
+        else:
+            print('No reconciliation necessary.', flush=True)
     return int(bool(failures))
 
 

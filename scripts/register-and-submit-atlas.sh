@@ -6,7 +6,8 @@
 
     dpu="${DPU_REPO:-/project/dash_drone/user/stephen.amerige/projects/github/precision-sustainable-ag/drone-pilot-upload}"
     data_root="${DPU_DATA_ROOT:-/project/dash_drone/user/stephen.amerige/dpu-data}"
-    sif="${DPU_UPLOAD_SIF:-${dpu}/sif_files/drone-pilot-upload-20261026.sif}"
+    sif="${DPU_UPLOAD_SIF:-${dpu}/sif_files/drone-pilot-upload-current.sif}"
+    container_python="${DPU_UPLOAD_PYTHON:-/usr/local/bin/python}"
     secrets="${DPU_SECRETS_FILE:-${HOME}/.config/drone-pilot-upload/atlas-sandbox/secrets.env}"
 
     cd "$dpu"
@@ -21,7 +22,7 @@
     export APPTAINERENV_DPU_MONGODB_COLLECTION=flight-information
     unset DPU_MONGODB_CONNECTION_STRING
 
-    apptainer exec "$sif" /opt/venv/bin/python \
+    apptainer exec "$sif" "$container_python" \
         "$dpu/scripts/register-pending-flights.py" \
         --data-root "$data_root" --queue-odm
 

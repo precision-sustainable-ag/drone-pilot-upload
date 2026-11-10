@@ -19,7 +19,8 @@ uuid_re='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     set -euo pipefail
     dpu=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
     data_root="${DPU_DATA_ROOT:-/project/dash_drone/user/stephen.amerige/dpu-data}"
-    sif="${DPU_UPLOAD_SIF:-${dpu}/sif_files/drone-pilot-upload-20261026.sif}"
+    sif="${DPU_UPLOAD_SIF:-${dpu}/sif_files/drone-pilot-upload-current.sif}"
+    container_python="${DPU_UPLOAD_PYTHON:-/usr/local/bin/python}"
     secrets="${DPU_SECRETS_FILE:-${HOME}/.config/drone-pilot-upload/atlas-sandbox/secrets.env}"
 
     [[ -d "$data_root/site-id" ]] || { echo "ERROR: Missing Atlas flight storage" >&2; exit 1; }
@@ -61,7 +62,7 @@ uuid_re='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     unset DPU_MONGODB_CONNECTION_STRING
 
     run_delete() {
-        apptainer exec "$sif" /opt/venv/bin/python "$dpu/scripts/delete-atlas-flight.py" \
+        apptainer exec "$sif" "$container_python" "$dpu/scripts/delete-atlas-flight.py" \
             --data-root "$data_root" --flight-id "$flight_id" "$@"
     }
 
