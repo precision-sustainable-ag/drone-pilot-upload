@@ -5,6 +5,8 @@ Stage: frontend
 %files
     frontend/package.json /opt/src/frontend/package.json
     frontend/package-lock.json /opt/src/frontend/package-lock.json
+    frontend/index.html /opt/src/frontend/index.html
+    frontend/vite.config.mjs /opt/src/frontend/vite.config.mjs
     frontend/public /opt/src/frontend/public
     frontend/src /opt/src/frontend/src
 
@@ -13,12 +15,7 @@ Stage: frontend
 
     cd /opt/src/frontend
     npm ci --no-audit --no-fund
-
-    export PUBLIC_URL=.
-    export REACT_APP_API_URL=./imgproc
-
     npm run build
-
 
 Bootstrap: docker
 From: python:3.14-slim-trixie

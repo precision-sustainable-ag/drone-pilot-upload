@@ -9,13 +9,10 @@ RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 
 # Open OnDemand proxies the application through a dynamic /rnode/... path.
-# Use relative asset and API URLs so the build is independent of the
-# compute-node hostname and dynamically selected port.
-ENV PUBLIC_URL=.
-ENV REACT_APP_API_URL=./imgproc
+# Vite's base: './' provides relative asset URLs, while App.jsx defaults
+# to the relative ./imgproc API endpoint.
 
 RUN npm run build
-
 
 # Runtime image.
 FROM python:3.14-slim-trixie
