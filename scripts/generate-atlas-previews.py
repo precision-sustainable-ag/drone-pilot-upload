@@ -2,6 +2,8 @@
 """Generate PNG previews of an Atlas ODM orthophoto and RGB vegetation indices."""
 
 import argparse
+import os
+import tempfile
 import warnings
 from pathlib import Path
 from uuid import UUID
@@ -38,15 +40,29 @@ def flight_directory(data_root, flight_id):
 
 
 def write_png(path, rgba):
+    # Atomic replacement prevents a timed-out coordinator from leaving a
+    # partial nonempty PNG that a later run could mistake for a finished preview.
     # PNG previews are intentionally not georeferenced; source GeoTIFFs remain intact.
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', NotGeoreferencedWarning)
-        with rasterio.open(
-            path, 'w', driver='PNG', width=rgba.shape[2],
-            height=rgba.shape[1], count=4, dtype='uint8',
-        ) as dst:
-            dst.write(rgba)
-    print(f'Created: {path}', flush=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=path.parent, prefix=f'.{path.stem}-', suffix='.png',
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', NotGeoreferencedWarning)
+            with rasterio.open(
+                temporary, 'w', driver='PNG', width=rgba.shape[2],
+                height=rgba.shape[1], count=4, dtype='uint8',
+            ) as dst:
+                dst.write(rgba)
+        os.chmod(temporary, 0o640)  # Preserve shared-project preview readability.
+        os.replace(temporary, path)
+        print(f'Created: {path}', flush=True)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def generate(flight_dir):

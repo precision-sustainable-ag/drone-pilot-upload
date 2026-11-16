@@ -1,0 +1,14 @@
+# Drone Pilot Upload - Atlas sandbox coordinator (approved development partition)
+# Install by merging this entry into your existing scrontab; do not replace other jobs.
+#SCRON --job-name=dpu-atlas-coordinator
+#SCRON --account=dash_drone
+#SCRON --partition=development
+#SCRON --nodes=1
+#SCRON --ntasks=1
+#SCRON --cpus-per-task=2
+#SCRON --mem=16G
+#SCRON --time=00:30:00
+#SCRON --dependency=singleton
+#SCRON --output=/project/dash_drone/user/stephen.amerige/dpu-data/logs/atlas-sandbox/coordinator-scron.log
+#SCRON --open-mode=append
+*/5 * * * * /bin/bash -l /project/dash_drone/user/stephen.amerige/projects/github/precision-sustainable-ag/drone-pilot-upload/scripts/run-atlas-scheduled-coordinator.sh
