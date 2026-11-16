@@ -8,30 +8,27 @@ The repository contains both the original stand-alone server deployment and work
 
 | Environment | Status | Documentation |
 | --- | --- | --- |
-| **Atlas sandbox** | End-to-end functional workflow validated October 26, 2026; manual operator coordination still required | [Atlas sandbox runbook](docs/atlas-sandbox-runbook.md) |
-| **Ceres sandbox** | Planned; not yet validated | To be documented |
-| **Original stand-alone server deployment** | Legacy configuration; check with project maintainers before redeploying | [Legacy deployment](#legacy-stand-alone-server-deployment) |
+| **Atlas sandbox** | Unattended upload-to-results workflow validated November 16, 2026 | [Atlas sandbox runbook](docs/atlas-sandbox-runbook.md) |
+| **Ceres sandbox** | Separate compatibility and end-to-end validation required ([#24](https://github.com/precision-sustainable-ag/drone-pilot-upload/issues/24)) | Planned |
+| **Original stand-alone server** | Legacy configuration; verify before redeployment | [Legacy deployment](#legacy-stand-alone-server-deployment) |
 
-The Atlas sandbox validation covered an upload of 24 JPEG images, EXIF/flight metadata extraction, MongoDB registration, automatic Slurm submission *when the operator invokes the registration command*, processing with OpenDroneMap (ODM) on an A100 GPU, production of an orthophoto and VARI/GLI imagery, and subsequent MongoDB status reconciliation. The validated Slurm job completed successfully, but the workflow is **not yet unattended**.
+The validated Atlas workflow uses the Flask/Vite application on an Open OnDemand `development` allocation, a five-minute Slurm `scrontab` coordinator running on development nodes, and separate A100 GPU jobs for OpenDroneMap (ODM). The coordinator registers new flights in MongoDB, submits GPU work, reconciles Slurm outcomes, and creates orthophoto/VARI/GLI previews. **No scheduled coordinator workload runs on a login node.** Once an upload finishes, the browser/OOD session need not remain active for processing to continue.
 
 ## Atlas sandbox: operator quick start
 
-The Atlas OOD upload application writes imagery and a registration request to shared project storage. The compute node currently cannot connect directly to MongoDB Atlas on TCP port 27017; a login-host workflow registers the metadata and submits a Slurm job. Once processing completes, a separate reconciliation step updates MongoDB with the job status and artifact paths.
+Launch the Atlas OOD `basic` app on the `development` partition, complete a flight upload, then let the scheduled coordinator advance the durable queue. **Do not manually submit ODM or reconcile MongoDB in the normal upload workflow.**
 
-**Run these commands on an authorized Atlas login host, from the repository:**
+From the repository, the following commands can be used to inspect or diagnose work:
 
 ```bash
-# After an upload: register pending flights and submit ODM jobs.
-bash scripts/register-and-submit-atlas.sh
-
-# Later, while jobs progress or after they finish: inspect changes, then sync.
-bash scripts/reconcile-atlas-flights.sh --dry-run
-bash scripts/reconcile-atlas-flights.sh
+bash scripts/atlas.sh pending
+bash scripts/atlas.sh status details <gpu-job-id>
+sacct -j <gpu-job-id> --format=JobID,JobName,State,ExitCode,Elapsed
 ```
 
-These are **two distinct manual operator actions**; neither is performed automatically by the user's browser session. Do not configure an unattended login-node scheduler or network tunnel without SCINet approval. For prerequisites, environment setup, secrets, Slurm monitoring, duplicate-job safeguards, MongoDB schema, and troubleshooting, read the **[Atlas sandbox operations and architecture runbook](docs/atlas-sandbox-runbook.md)** before operating the system.
+The coordinator is installed with Slurm `scrontab`; its source template is `deploy/atlas-sandbox/dpu-coordinator.scrontab`. It executes `scripts/run-atlas-scheduled-coordinator.sh` in a Slurm development allocation and writes a single rotating log under `<data-root>/logs/atlas-sandbox/coordinator/coordinator.log`.
 
-MongoDB's top-level `status` describes flight readiness. The current status vocabulary includes `registered`, `queued`, `processing`, `ortho generated`, `processed`, and `failed`. `processed` indicates that Slurm completed successfully and the required orthophoto, VARI, and GLI files passed the current existence/nonempty-file checks. Newly registered flights are intended to initialize at `registered`; that specific insertion change requires confirmation with a fresh flight. Detailed stage and job information is held in the `stages`, `processing`, and `artifacts` fields.
+Consult [the Atlas sandbox runbook](docs/atlas-sandbox-runbook.md) for the authoritative deployment procedure, schedule, logging, durable markers, safety safeguards, manual diagnostics, and ambiguous GPU-submission recovery. `processed` denotes successful Slurm processing with required nonempty orthophoto/VARI/GLI products; it does not constitute scientific validation of the products.
 
 ## Technology stack
 
@@ -51,7 +48,7 @@ deploy/                  Environment-specific deployment templates
   atlas-sandbox/         Validated Atlas OOD launcher
 ondemand/                Original OOD app materials
 ortho_processing/        Orthomosaic and vegetation-index processing, legacy tools
-scripts/                 Atlas registration, Slurm submission, and reconciliation
+scripts/                 Atlas coordination, registration, GPU submission, reconciliation, and previews
 sif_files/               Locally managed Apptainer images (not source code)
 docs/                    Deployment and operations documentation (see below)
 ```
@@ -103,4 +100,4 @@ Earlier super-user installation documentation is available in the [project's Atl
 
 ## Outstanding work
 
-The next steps are to confirm initial `registered` status on a fresh flight, commit the Atlas status integration, perform a targeted security review, obtain SCINet guidance for an approved unattended coordinator, and only then begin Ceres-specific deployment and CPU-processing validation. See the runbook for the current operational caveats and support questions.
+Atlas unattended operation has been validated in the sandbox. Follow-on work includes completing the operational review under [#22](https://github.com/precision-sustainable-ag/drone-pilot-upload/issues/22), validating equivalent functionality on Ceres under [#24](https://github.com/precision-sustainable-ag/drone-pilot-upload/issues/24), and adding existing-flight reprocessing and bidirectional Globus transfers under [#23](https://github.com/precision-sustainable-ag/drone-pilot-upload/issues/23). Performance optimization and production deployment are separate future efforts.
