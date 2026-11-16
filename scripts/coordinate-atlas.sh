@@ -47,6 +47,13 @@ if ! bash "$script_dir/atlas.sh" reconcile; then
     result=1
 fi
 
+echo "=== Generate missing flight previews ==="
+
+if ! python3 "$script_dir/generate-missing-atlas-previews.py"; then
+    echo "Preview generation encountered errors" >&2
+    result=1
+fi
+
 echo "=== Coordinator finished (exit status: $result) ==="
 
 exit "$result"
