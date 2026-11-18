@@ -12,7 +12,7 @@ def generateVegIndices(ortho_file, flight_dir):
     rasterio_dataset = rasterio.open(ortho_file)
     print("RasterIO dataset read")
     band_mapping = {}
-    for band, name in zip(rasterio_dataset.indexes, rasterio_dataset.descriptions, strict=False):
+    for band, name in zip(rasterio_dataset.indexes, rasterio_dataset.descriptions):
         if name:
             band_mapping[name.lower()] = band
     # bandmapping > 4 (and not 3) indicates multispec since there always is
@@ -110,7 +110,7 @@ def generateVegIndices(ortho_file, flight_dir):
 def process_in_chunks(rasterio_dataset, index_folder, chunk_size=512):
     # Get the dimensions of the raster
     band_mapping = {}
-    for band, name in zip(rasterio_dataset.indexes, rasterio_dataset.descriptions, strict=False):
+    for band, name in zip(rasterio_dataset.indexes, rasterio_dataset.descriptions):
         if name:
             band_mapping[name.lower()] = band
     height, width = rasterio_dataset.height, rasterio_dataset.width
