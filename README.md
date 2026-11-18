@@ -9,7 +9,7 @@ The repository contains both the original stand-alone server deployment and work
 | Environment | Status | Documentation |
 | --- | --- | --- |
 | **Atlas sandbox** | Unattended upload-to-results workflow validated November 16, 2026 | [Atlas sandbox runbook](docs/atlas-sandbox-runbook.md) |
-| **Ceres sandbox** | Separate compatibility and end-to-end validation required ([#24](https://github.com/precision-sustainable-ag/drone-pilot-upload/issues/24)) | Planned |
+| **Ceres sandbox** | Deployment work beginning November 18, 2026; compatibility and end-to-end validation are next ([#24](https://github.com/precision-sustainable-ag/drone-pilot-upload/issues/24)) | Planned |
 | **Original stand-alone server** | Legacy configuration; verify before redeployment | [Legacy deployment](#legacy-stand-alone-server-deployment) |
 
 The validated Atlas workflow uses the Flask/Vite application on an Open OnDemand `development` allocation, a five-minute Slurm `scrontab` coordinator running on development nodes, and separate A100 GPU jobs for OpenDroneMap (ODM). The coordinator registers new flights in MongoDB, submits GPU work, reconciles Slurm outcomes, and creates orthophoto/VARI/GLI previews. **No scheduled coordinator workload runs on a login node.** Once an upload finishes, the browser/OOD session need not remain active for processing to continue.
