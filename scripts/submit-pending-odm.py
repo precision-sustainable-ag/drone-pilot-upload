@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Submit queued ODM jobs on the Atlas login host (not inside Apptainer).
+"""Submit queued ODM jobs from a Slurm-capable host (not inside Apptainer).
 
 At-most-once *automatic* submission: a flight is moved to `.submitting`
 before sbatch. If the process crashes, that file remains and requires human
-reconciliation, rather than risking a duplicate GPU job.
+reconciliation, rather than risking duplicate processing.
 """
 
 import argparse
@@ -75,14 +75,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", required=True, type=Path)
     parser.add_argument("--repo", required=True, type=Path)
-    parser.add_argument("--partition", default="gpu-a100")
-    parser.add_argument("--gres", default="gpu:a100:1")
+    parser.add_argument("--sandbox", choices=("atlas", "ceres"), default="atlas")
+    parser.add_argument("--partition", default=None)
+    parser.add_argument("--gres", default=None)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
     root = args.data_root.expanduser().resolve(strict=True)
     repo = args.repo.expanduser().resolve(strict=True)
-    job_script = repo / "scripts" / "odm-atlas-flight.sh"
+    job_script = repo / "scripts" / f"odm-{args.sandbox}-flight.sh"
+    partition = args.partition or ("ceres" if args.sandbox == "ceres" else "gpu-a100")
+    gres = args.gres if args.gres is not None else (None if args.sandbox == "ceres" else "gpu:a100:1")
+    if args.sandbox == "ceres" and gres:
+        parser.error("Ceres submission is CPU-only; --gres is not allowed")
     if not job_script.is_file():
         parser.error(f"ODM job script not found: {job_script}")
     id_root = root / "site-id"
@@ -113,7 +118,7 @@ def main():
             try:
                 org, flight, request = inspect(path)
                 if args.dry_run:
-                    print(f"WOULD SUBMIT: {flight} ({args.partition}, {args.gres})", flush=True)
+                    print(f"WOULD SUBMIT: {flight} ({partition}, {gres or 'CPU only'})", flush=True)
                     continue
                 submitting = path.with_name(SUBMITTING)
                 submitted = path.with_name(SUBMITTED)
@@ -122,14 +127,15 @@ def main():
                 path.rename(submitting)
                 command = [
                     "sbatch", "--parsable",
-                    f"--partition={args.partition}",
-                    f"--gres={args.gres}",
+                    f"--partition={partition}",
                     f"--job-name=dpu-{flight}",
                     f"--chdir={path.parent}",
                     f"--output={path.parent}/odm-slurm-%j.out",
                     f"--error={path.parent}/odm-slurm-%j.err",
                     str(job_script), org, flight,
                 ]
+                if gres:
+                    command.insert(3, f"--gres={gres}")
                 # Keep MongoDB credentials out of the Slurm job environment.
                 environment = {
                     key: value for key, value in os.environ.items()
@@ -150,8 +156,8 @@ def main():
                 receipt = dict(request)
                 receipt.update({
                     "slurm_job_id": job_id,
-                    "partition": args.partition,
-                    "gres": args.gres,
+                    "partition": partition,
+                    "gres": gres,
                     "submitted_at": datetime.now(timezone.utc).isoformat(),
                 })
                 atomic_json(submitted, receipt)
