@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reconcile Atlas Slurm evidence and verified products into sandbox MongoDB.
+"""Reconcile Slurm evidence and verified products into sandbox MongoDB.
 
 Run with the application Apptainer Python environment on an authorized host.
 No database writes occur in --dry-run mode.
@@ -14,7 +14,10 @@ from uuid import UUID
 
 from pymongo import MongoClient
 
-DB = 'drone-pilot-atlas-sandbox'
+SANDBOX_DATABASES = {
+    'atlas': 'drone-pilot-atlas-sandbox',
+    'ceres': 'drone-pilot-ceres-sandbox',
+}
 COLLECTION = 'flight-information'
 RECEIPT = 'odm-submission.submitted.json'
 SNAPSHOT = 'odm-slurm-accounting.json'
@@ -162,6 +165,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--data-root', required=True, type=Path)
     ap.add_argument('--flight-id')
+    ap.add_argument('--sandbox', choices=tuple(SANDBOX_DATABASES), default='atlas',
+                    help='Target sandbox (default: atlas for existing callers)')
     ap.add_argument('--dry-run', action='store_true')
     args = ap.parse_args()
     root = args.data_root.expanduser().resolve(strict=True) / 'site-id'
@@ -186,9 +191,10 @@ def main():
 
     # A dry run must read the same sandbox records as an actual reconciliation,
     # but it must never write them.
-    if (os.environ.get('DPU_MONGODB_DATABASE') != DB or
+    db = SANDBOX_DATABASES[args.sandbox]
+    if (os.environ.get('DPU_MONGODB_DATABASE') != db or
             os.environ.get('DPU_MONGODB_COLLECTION') != COLLECTION):
-        ap.error('Refusing to access outside the dedicated Atlas sandbox collection')
+        ap.error(f'Refusing to access outside {db}.{COLLECTION}')
     uri = os.environ.get('DPU_MONGODB_CONNECTION_STRING')
     if not uri:
         ap.error('Missing DPU_MONGODB_CONNECTION_STRING')
@@ -196,7 +202,7 @@ def main():
     updates = current = preserved = 0
     client = MongoClient(uri, serverSelectionTimeoutMS=10000)
     try:
-        col = client[DB][COLLECTION]
+        col = client[db][COLLECTION]
         for flight, org, payload in planned:
             try:
                 existing = col.find_one({'flight_id': flight})
@@ -241,7 +247,7 @@ def main():
         if failures:
             print('Resolve errors before reconciliation.', flush=True)
         elif updates:
-            print('Next action: scripts/atlas.sh reconcile', flush=True)
+            print('Next action: run this command without --dry-run in the same sandbox', flush=True)
         else:
             print('No reconciliation necessary.', flush=True)
     return int(bool(failures))
