@@ -10,7 +10,7 @@ if (( $# != 0 )); then
 fi
 
 host=$(hostname -s)
-if [[ $host != ceres*-compute-* ]]; then
+if [[ $host != ceres*-compute-* && $host != ceres*-mem-* ]]; then
     echo "ERROR: Ceres coordinator requires a compute allocation, not a login node: $host" >&2
     exit 2
 fi
