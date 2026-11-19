@@ -12,7 +12,7 @@ def generateVegIndices(ortho_file, flight_dir):
     rasterio_dataset = rasterio.open(ortho_file)
     print("RasterIO dataset read")
     band_mapping = {}
-    for band, name in zip(rasterio_dataset.indexes, rasterio_dataset.descriptions, strict=False):
+    for band, name in zip(rasterio_dataset.indexes, rasterio_dataset.descriptions):
         if name:
             band_mapping[name.lower()] = band
     # bandmapping > 4 (and not 3) indicates multispec since there always is
@@ -110,7 +110,7 @@ def generateVegIndices(ortho_file, flight_dir):
 def process_in_chunks(rasterio_dataset, index_folder, chunk_size=512):
     # Get the dimensions of the raster
     band_mapping = {}
-    for band, name in zip(rasterio_dataset.indexes, rasterio_dataset.descriptions, strict=False):
+    for band, name in zip(rasterio_dataset.indexes, rasterio_dataset.descriptions):
         if name:
             band_mapping[name.lower()] = band
     height, width = rasterio_dataset.height, rasterio_dataset.width
@@ -140,29 +140,28 @@ def process_in_chunks(rasterio_dataset, index_folder, chunk_size=512):
                     "float32"
                 )
 
-                # Calculate NDVI for the chunk
-                vari = np.where(
-                    (green_band + red_band - blue_band) == 0,
-                    np.nan,
-                    (green_band - red_band) / (green_band + red_band - blue_band),
+                # VARI: do not evaluate undefined divisions on masked/zero pixels.
+                vari_denominator = green_band + red_band - blue_band
+                vari = np.full(vari_denominator.shape, np.nan, dtype="float32")
+                np.divide(
+                    green_band - red_band, vari_denominator,
+                    out=vari, where=np.isfinite(vari_denominator) & (vari_denominator != 0),
                 )
-                vari[np.isnan(vari)] = np.nan
-                # Write NDVI chunk to file
+                # Write VARI chunk to file
                 vari_dest.write(vari.astype(rasterio.float32), 1, window=window)
 
-                # Calculate LAI for the chunk
-                gli = np.where(
-                    (2 * green_band + red_band + blue_band) == 0,
-                    np.nan,
-                    (2 * green_band - red_band - blue_band)
-                    / (2 * green_band + red_band + blue_band),
+                # GLI: preserve missing values without dividing by zero.
+                gli_denominator = 2 * green_band + red_band + blue_band
+                gli = np.full(gli_denominator.shape, np.nan, dtype="float32")
+                np.divide(
+                    2 * green_band - red_band - blue_band, gli_denominator,
+                    out=gli, where=np.isfinite(gli_denominator) & (gli_denominator != 0),
                 )
-                gli[np.isnan(gli)] = np.nan
 
                 gli_dest.write(gli.astype(rasterio.float32), 1, window=window)
                 del red_band, blue_band, green_band, vari, gli
 
-    print("NDVI and GLI files written in chunks")
+    print("VARI and GLI files written in chunks")
 
 
 if __name__ == "__main__":

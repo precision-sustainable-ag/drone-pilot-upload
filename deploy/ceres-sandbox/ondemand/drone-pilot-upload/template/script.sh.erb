@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 
-# Start the real Drone Pilot Upload application inside the Slurm allocation.
+# Start Drone Pilot Upload inside a Ceres Slurm allocation.
 
 set -euo pipefail
 
 dpu="/project/dash_drone/user/stephen.amerige/projects/github/precision-sustainable-ag/drone-pilot-upload"
-sif="${dpu}/sif_files/drone-pilot-upload.sif"
+data_root="/project/dash_drone/user/stephen.amerige/dpu-data"
 
-echo "Starting Drone Pilot Upload"
+sif="${dpu}/sif_files/drone-pilot-upload.next.sif"
+log_file="${data_root}/logs/ceres-sandbox/app.log"
+
+echo "Starting Drone Pilot Upload on Ceres"
 echo "Compute node: $(hostname)"
 echo "Slurm job: ${SLURM_JOB_ID}"
 echo "Port: ${port}"
@@ -15,26 +18,26 @@ echo "SIF: ${sif}"
 
 module load apptainer/1.4.1
 
-### SECRETS BEGIN
-secrets="${HOME}/.config/drone-pilot-upload/secrets.env"
-
-if [[ ! -r "${secrets}" ]]; then
-    echo "MongoDB secrets file is not readable: ${secrets}" >&2
+### VALIDATION
+if [[ ! -r "${sif}" ]]; then
+    echo "Application image is not readable: ${sif}" >&2
     exit 1
 fi
 
-source "${secrets}"
+### APPLICATION LOGGING
+mkdir -p "$(dirname "${log_file}")"
 
-if [[ -z "${DPU_MONGODB_CONNECTION_STRING:-}" ]]; then
-    echo "DPU_MONGODB_CONNECTION_STRING is not defined" >&2
+if [[ ! -w "$(dirname "${log_file}")" ]]; then
+    echo "Application log directory is not writable" >&2
     exit 1
 fi
-### SECRETS END
 
+### LAUNCH APPLICATION
 exec apptainer run \
     --env PORT="${port}" \
-    --env DPU_DATA_ROOT=/project/dash_drone/user/stephen.amerige/dpu-data \
+    --env DPU_DATA_ROOT="${data_root}" \
     --env DPU_ID_DIR=site-id \
     --env DPU_NAME_DIR=site-name \
-    --env DPU_MONGODB_CONNECTION_STRING="${DPU_MONGODB_CONNECTION_STRING}" \
+    --env DPU_MONGODB_MODE=queue \
+    --env DPU_LOG_FILE="${log_file}" \
     "${sif}"

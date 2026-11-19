@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Register queued Atlas sandbox flights in MongoDB (one-shot, idempotent).
+"""Register queued sandbox flights in MongoDB (one-shot, idempotent).
 
-Run from an authorized Atlas host with MongoDB connectivity using the
-Drone Pilot Upload container's Python environment.
+Run from an authorized host with MongoDB connectivity using the Drone Pilot
+Upload container Python environment. Defaults to the Atlas sandbox to preserve
+existing automated Atlas callers; Ceres requires explicit --sandbox ceres.
 """
 
 import argparse
@@ -17,7 +18,10 @@ from uuid import UUID
 from bson import json_util
 from pymongo import MongoClient
 
-SANDBOX_DATABASE = "drone-pilot-atlas-sandbox"
+SANDBOX_DATABASES = {
+    "atlas": "drone-pilot-atlas-sandbox",
+    "ceres": "drone-pilot-ceres-sandbox",
+}
 SANDBOX_COLLECTION = "flight-information"
 PENDING_NAME = "mongo-registration.pending.json"
 DONE_NAME = "mongo-registration.done.json"
@@ -136,6 +140,8 @@ def main():
         help="Root containing site-id/<organization GUID>/flights/"
     )
     parser.add_argument("--id-dir", default="site-id", help="Organization GUID directory name")
+    parser.add_argument("--sandbox", choices=tuple(SANDBOX_DATABASES), default="atlas",
+                        help="Explicit target sandbox (default: atlas for existing callers)")
     parser.add_argument("--dry-run", action="store_true", help="Inspect queue; do not connect to MongoDB")
     parser.add_argument("--queue-odm", action="store_true", help="Queue one ODM submission after each successful MongoDB registration")
     args = parser.parse_args()
@@ -170,11 +176,12 @@ def main():
     if not valid:
         return 1
 
-    # Refuse any database except the dedicated Atlas sandbox database.
+    # Never allow a sandbox to write to another sandbox or an arbitrary database.
+    expected_database = SANDBOX_DATABASES[args.sandbox]
     database = os.environ.get("DPU_MONGODB_DATABASE")
     collection_name = os.environ.get("DPU_MONGODB_COLLECTION")
-    if database != SANDBOX_DATABASE or collection_name != SANDBOX_COLLECTION:
-        parser.error("Refusing to write outside drone-pilot-atlas-sandbox.flight-information")
+    if database != expected_database or collection_name != SANDBOX_COLLECTION:
+        parser.error(f"Refusing to write outside {expected_database}.{SANDBOX_COLLECTION}")
     uri = os.environ.get("DPU_MONGODB_CONNECTION_STRING")
     if not uri:
         parser.error("DPU_MONGODB_CONNECTION_STRING is missing")
