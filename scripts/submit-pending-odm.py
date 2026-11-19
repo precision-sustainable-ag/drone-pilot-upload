@@ -23,6 +23,7 @@ SUBMITTING = "odm-submission.submitting.json"
 SUBMITTED = "odm-submission.submitted.json"
 REGISTERED = "mongo-registration.done.json"
 JOB_ID_PATTERN = re.compile(r"^(\d+)(?:;[A-Za-z0-9_.-]+)?$")
+IMAGE_EXTENSIONS = frozenset((".jpg", ".jpeg", ".tif", ".tiff"))
 
 
 def guid(value):
@@ -50,6 +51,20 @@ def atomic_json(path, data):
             temporary.unlink()
 
 
+def image_inventory(images_dir):
+    """Inspect the same regular-file image types accepted by the ODM job scripts."""
+    count = 0
+    total_bytes = 0
+    with os.scandir(images_dir) as entries:
+        for entry in entries:
+            if entry.name.lower().endswith(tuple(IMAGE_EXTENSIONS)) and entry.is_file(follow_symlinks=False):
+                count += 1
+                total_bytes += entry.stat(follow_symlinks=False).st_size
+    if count == 0:
+        raise ValueError("No supported regular-file images in flight images directory")
+    return {"image_count": count, "total_image_bytes": total_bytes}
+
+
 def inspect(path):
     flight_dir = path.parent
     if flight_dir.parent.name != "flights":
@@ -61,14 +76,16 @@ def inspect(path):
         raise ValueError("Submission request does not match flight directory")
     if not (flight_dir / REGISTERED).is_file():
         raise ValueError("MongoDB registration has not completed")
-    if not (flight_dir / "images").is_dir():
+    images_dir = flight_dir / "images"
+    if not images_dir.is_dir():
         raise ValueError("Missing flight images")
+    inventory = image_inventory(images_dir)
     if (flight_dir / "odm").exists() or (flight_dir / "odm-tmp").exists():
         raise ValueError("ODM directories already exist; refusing duplicate processing")
     for name in (SUBMITTING, SUBMITTED):
         if (flight_dir / name).exists():
             raise ValueError(f"ODM submission already has state {name}")
-    return org, flight, request
+    return org, flight, request, inventory
 
 
 def main():
@@ -116,9 +133,14 @@ def main():
 
         for path in pending:
             try:
-                org, flight, request = inspect(path)
+                org, flight, request, inventory = inspect(path)
                 if args.dry_run:
-                    print(f"WOULD SUBMIT: {flight} ({partition}, {gres or 'CPU only'})", flush=True)
+                    print(
+                        f"WOULD SUBMIT: {flight} ({partition}, {gres or 'CPU only'}); "
+                        f"images={inventory['image_count']}; "
+                        f"image_bytes={inventory['total_image_bytes']}",
+                        flush=True,
+                    )
                     continue
                 submitting = path.with_name(SUBMITTING)
                 submitted = path.with_name(SUBMITTED)
@@ -155,6 +177,7 @@ def main():
                 job_id = match.group(1)
                 receipt = dict(request)
                 receipt.update({
+                    "image_inventory": inventory,
                     "slurm_job_id": job_id,
                     "partition": partition,
                     "gres": gres,
