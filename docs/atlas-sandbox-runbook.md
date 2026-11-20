@@ -194,6 +194,8 @@ A completed job should report `COMPLETED`, exit `0:0`, and have nonempty orthoph
 
 **Routine activity does not require invoking `atlas.sh submit` or `atlas.sh reconcile` manually.** The scheduled coordinator performs both; the operator commands remain useful for diagnostics and controlled remediation. Do not invoke state-changing commands on a login node as a substitute for a failing scheduled development-node job.
 
+For workload-aware Atlas/Ceres resource selection and **operator-only timeout/OOM recovery**, see [Workload-aware ODM sizing and resource-failure recovery (#28)](odm-workload-recovery.md). The new sizing/retry tooling is feature-branch work and is not part of the November 16 validated unattended baseline; do not change the active coordinator checkout solely to run a dry-run test.
+
 ## 8. Failure diagnosis and safe recovery
 
 | Symptom | Inspect | Safe interpretation or action |
