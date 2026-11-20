@@ -25,6 +25,53 @@ REGISTERED = "mongo-registration.done.json"
 JOB_ID_PATTERN = re.compile(r"^(\d+)(?:;[A-Za-z0-9_.-]+)?$")
 IMAGE_EXTENSIONS = frozenset((".jpg", ".jpeg", ".tif", ".tiff"))
 
+# Initial sizing *proposals*, deliberately NOT used for sbatch yet.
+# Thresholds are provisional workload buckets, not validated runtime estimates.
+# Keep CPUs at four until ODM --max-concurrency is adjusted and tested.
+GIB = 1024 ** 3
+RESOURCE_PROFILES = {
+    "atlas": (
+        {"name": "small", "max_images": 100, "max_bytes": 10 * GIB,
+         "partition": "gpu-a100", "gres": "gpu:a100:1",
+         "cpus": 4, "mem": "64G", "time": "01:00:00"},
+        {"name": "medium", "max_images": 500, "max_bytes": 50 * GIB,
+         "partition": "gpu-a100", "gres": "gpu:a100:1",
+         "cpus": 4, "mem": "128G", "time": "04:00:00"},
+        {"name": "large", "max_images": None, "max_bytes": None,
+         "partition": "gpu-a100", "gres": "gpu:a100:1",
+         "cpus": 4, "mem": "256G", "time": "12:00:00"},
+    ),
+    "ceres": (
+        {"name": "small", "max_images": 100, "max_bytes": 10 * GIB,
+         "partition": "ceres", "gres": None,
+         "cpus": 4, "mem": "64G", "time": "08:00:00"},
+        {"name": "medium", "max_images": 500, "max_bytes": 50 * GIB,
+         "partition": "ceres", "gres": None,
+         "cpus": 4, "mem": "128G", "time": "16:00:00"},
+        {"name": "large", "max_images": None, "max_bytes": None,
+         "partition": "ceres", "gres": None,
+         "cpus": 4, "mem": "256G", "time": "48:00:00"},
+    ),
+}
+
+
+def preview_resource_profile(sandbox, inventory):
+    """Suggest a conservative bucket; never change submission resources."""
+    count = inventory["image_count"]
+    total_bytes = inventory["total_image_bytes"]
+    for profile in RESOURCE_PROFILES[sandbox]:
+        if profile["max_images"] is None or (
+            count <= profile["max_images"] and
+            total_bytes <= profile["max_bytes"]
+        ):
+            reason = (
+                f"{count} images, {total_bytes} bytes; "
+                "provisional count/size thresholds (not a runtime guarantee)"
+            )
+            return profile, reason
+    raise AssertionError("Last resource profile must be unbounded")
+
+
 
 def guid(value):
     value = str(value)
@@ -136,9 +183,19 @@ def main():
                 org, flight, request, inventory = inspect(path)
                 if args.dry_run:
                     print(
-                        f"WOULD SUBMIT: {flight} ({partition}, {gres or 'CPU only'}); "
+                        f"WOULD SUBMIT WITH CURRENT SETTINGS: {flight} "
+                        f"({partition}, {gres or 'CPU only'}); "
                         f"images={inventory['image_count']}; "
                         f"image_bytes={inventory['total_image_bytes']}",
+                        flush=True,
+                    )
+                    profile, reason = preview_resource_profile(args.sandbox, inventory)
+                    print(
+                        f"PROFILE PREVIEW ONLY (not applied): {flight}: "
+                        f"{profile['name']} partition={profile['partition']} "
+                        f"gres={profile['gres'] or 'none'} cpus={profile['cpus']} "
+                        f"mem={profile['mem']} time={profile['time']}; "
+                        f"reason={reason}",
                         flush=True,
                     )
                     continue
