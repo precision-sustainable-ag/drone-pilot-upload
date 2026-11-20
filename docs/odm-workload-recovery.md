@@ -57,6 +57,18 @@ Use --sandbox ceres on Ceres. The optional --apply-resource-profile is required 
 
 Successful submission receipts include image inventory, profile choice, and requested Slurm resources. scripts/collect-atlas-status.py collects Slurm timing/memory evidence (where available); a recorded MaxRSS is step-specific and may not represent whole-job peak memory.
 
+## Processing-version provenance
+
+Initial ODM submission receipts and explicit retry receipts now include a `processing_provenance` object captured immediately before Slurm submission:
+
+- `git_commit` (when the repository is a Git checkout) and `working_tree` (`clean`, `modified`, or `unknown`);
+- SHA-256 fingerprints of the small batch script and the submitting Python script;
+- selected ODM SIF configured/resolved paths, filename-based `version_hint`, byte size, and last modification timestamp, if the image is readable.
+
+The git revision and script hashes provide useful evidence of **what was selected at submission time**. The filename is a version hint, **not authoritative container version metadata**; SIF size/timestamp are **not cryptographic identity**. The SIF SHA-256 field is intentionally `null` because a recurring coordinator must not repeatedly hash a potentially multi-gigabyte SIF on a login/development node. For stronger scientific provenance, publish and pin a verified image digest at **build time** and record actual execution-time identity in a later processing-attempt enhancement (Issue #23).
+
+The submitter explicitly exports `DPU_REPO` and `DPU_DATA_ROOT` to Slurm, aligning the runtime paths with the checkout and data root it inspected. A mutable checkout or SIF may still change between submission and job execution; do not describe this record as an execution-time attestation.
+
 ## Recovery: read-only review, then explicit operator submission
 
 1. Confirm the original Slurm job ID and its TIMEOUT or OUT_OF_MEMORY state with sacct, its original submitted receipt, and logs. Do not retry merely because squeue no longer lists the job.
