@@ -18,6 +18,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
+# This script is also loaded through importlib by the regression tests.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from processing_provenance import capture_processing_provenance
+
 PENDING = "odm-submission.pending.json"
 SUBMITTING = "odm-submission.submitting.json"
 SUBMITTED = "odm-submission.submitted.json"
@@ -235,6 +239,9 @@ def main():
                     continue
                 submitting = path.with_name(SUBMITTING)
                 submitted = path.with_name(SUBMITTED)
+                provenance = capture_processing_provenance(
+                    repo, args.sandbox, Path(__file__)
+                )
                 # Before sbatch, consume the pending request. An interruption
                 # here leaves .submitting for explicit human reconciliation.
                 path.rename(submitting)
@@ -248,6 +255,9 @@ def main():
                     key: value for key, value in os.environ.items()
                     if "MONGODB" not in key.upper() and key != "DPU_SECRETS_FILE"
                 }
+                # Match the runtime checkout and image paths to the provenance
+                # captured for this submission, even when the CLI is run elsewhere.
+                environment.update(DPU_REPO=str(repo), DPU_DATA_ROOT=str(root))
                 result = subprocess.run(
                     command, cwd=repo, env=environment,
                     capture_output=True, text=True, check=False,
@@ -263,6 +273,7 @@ def main():
                 receipt = dict(request)
                 receipt.update({
                     "image_inventory": inventory,
+                    "processing_provenance": provenance,
                     "slurm_job_id": job_id,
                     "partition": effective_partition,
                     "gres": effective_gres,
