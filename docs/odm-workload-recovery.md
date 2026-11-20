@@ -22,6 +22,29 @@ Flight inventory is a count and sum of bytes of regular JPG/JPEG/TIF/TIFF files 
 
 Slurm partition and GRES are gpu-a100/gpu:a100:1 on Atlas and ceres/none on Ceres. The Atlas batch-script GPU defaults also use A100. Actual cluster limits and resource access must be verified independently before processing unusually large flights.
 
+### Slurm configuration and test-only validation (November 20, 2026)
+
+On the respective login nodes, operators inspected `scontrol show partition`, `sinfo`, and `sacctmgr ... show qos`. The following limits were observed:
+
+- **Atlas `gpu-a100`:** three nodes, eight A100 GPUs per node, 128 CPUs per node, 2,063,965 MiB/node; partition MaxTime unlimited; `a100` QoS MaxWall **7 days**, MaxTRESPerUser **mem=1500G**.
+- **Ceres `ceres`:** partition MaxTime **60 days**; node summary minimum **752,000 MiB** and **96 CPUs** per node; `ceres` QoS MaxWall **21 days** and MaxTRESPerUser **cpu=4000,mem=36T,node=32**.
+
+Both clusters accepted the **largest proposed profile** in a read-only `sbatch --test-only` feasibility check:
+
+~~~bash
+# Atlas -- test-only, not a job submission
+sbatch --test-only --account=dash_drone --partition=gpu-a100 \
+  --gres=gpu:a100:1 --cpus-per-task=4 --mem=256G \
+  --time=12:00:00 --wrap='/bin/true'
+
+# Ceres -- test-only, not a job submission
+sbatch --test-only --account=dash_drone --partition=ceres \
+  --cpus-per-task=4 --mem=256G --time=48:00:00 \
+  --wrap='/bin/true'
+~~~
+
+Atlas returned an estimated placement on `atlas-0243`; Ceres returned `ceres25-compute-42`. These were **Slurm feasibility estimates, not actual jobs**. The partition/QoS observations and test-only acceptance support configuration compatibility, **not guaranteed queue admission, account-level approvals, or validated processing runtime**.
+
 For pending submissions, on a Slurm-capable authorized host, inspect the proposed command **without consuming any queue marker**:
 
 ~~~bash
