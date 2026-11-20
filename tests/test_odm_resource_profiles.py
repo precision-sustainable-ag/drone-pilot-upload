@@ -1,8 +1,11 @@
 """Resource sizing and Slurm command regression tests (stdlib only)."""
 import importlib.util
+import hashlib
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -15,6 +18,7 @@ def load(name, path):
 
 
 submit = load("dpu_submit_test", "scripts/submit-pending-odm.py")
+provenance = load("dpu_provenance_test", "scripts/processing_provenance.py")
 
 
 class ResourceProfilesTest(unittest.TestCase):
@@ -88,6 +92,39 @@ class ResourceProfilesTest(unittest.TestCase):
                 self.assertIn("submit-pending-odm.py", body)
                 self.assertIn(f"--sandbox {sandbox}", body)
                 self.assertIn("--apply-resource-profile", body)
+
+    def test_processing_provenance_captures_versions_without_hashing_sif(self):
+        with tempfile.TemporaryDirectory(prefix="dpu-provenance-") as tmp:
+            root = Path(tmp)
+            (root / "scripts").mkdir()
+            (root / "sif_files").mkdir()
+            job = root / "scripts" / "odm-atlas-flight.sh"
+            job.write_bytes(b"#!/bin/bash\nexit 0\n")
+            submitter = root / "scripts" / "submit-pending-odm.py"
+            submitter.write_bytes(b"# submitter\n")
+            image = root / "sif_files" / "odm-3.6.2-gpu.sif"
+            image.write_bytes(b"synthetic image (not a real SIF)")
+            with patch.dict(os.environ, {"DPU_ODM_SIF": str(image)}), \
+                    patch.object(provenance, "_git", side_effect=["a" * 40, ""]):
+                record = provenance.capture_processing_provenance(
+                    root, "atlas", submitter
+                )
+            self.assertEqual(record["git_commit"], "a" * 40)
+            self.assertEqual(record["working_tree"], "clean")
+            self.assertEqual(record["job_script_sha256"],
+                             hashlib.sha256(job.read_bytes()).hexdigest())
+            self.assertEqual(record["submitter_script_sha256"],
+                             hashlib.sha256(submitter.read_bytes()).hexdigest())
+            self.assertEqual(record["odm_image"]["resolved_path"], str(image))
+            self.assertEqual(record["odm_image"]["size_bytes"], image.stat().st_size)
+            self.assertIsNone(record["odm_image"]["sha256"])
+            with patch.object(provenance, "_git", side_effect=[None, None]), \
+                    patch.dict(os.environ, {"DPU_ODM_SIF": str(image)}):
+                unknown = provenance.capture_processing_provenance(
+                    root, "atlas", submitter
+                )
+            self.assertIsNone(unknown["git_commit"])
+            self.assertEqual(unknown["working_tree"], "unknown")
 
     def test_atlas_direct_sbatch_defaults_match_scheduled_gpu(self):
         """Manual sbatch should not silently switch to legacy L40S defaults."""
