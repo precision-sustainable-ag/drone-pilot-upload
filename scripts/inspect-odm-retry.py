@@ -31,7 +31,39 @@ def canonical_guid(value):
     return value
 
 
-def inspect_retry(root, flight_id, previous_job_id, sandbox):
+def review_publication(flight_dir, attempt, sandbox, state, exit_code):
+    """Read-only preflight. This never replaces the original ODM workspace."""
+    blockers = []
+    if state != "COMPLETED" or exit_code != "0:0":
+        blockers.append(f"Retry Slurm job is not successful: {state} exit={exit_code}")
+    for name, relative in PRODUCTS.items():
+        product = attempt / relative
+        if product.is_symlink() or not product.is_file() or product.stat().st_size == 0:
+            blockers.append(f"Missing, empty, or symlinked retry {name}: {relative}")
+    if sandbox == "ceres" and any(
+        not (attempt / PRODUCTS[name]).is_file() for name in ("vari", "gli")
+    ):
+        blockers.append("Ceres indices require isolated postprocessing before publication")
+    for name in ("odm", "odm-tmp"):
+        old = flight_dir / name
+        if old.exists() or old.is_symlink():
+            blockers.append(f"Existing {name} must be archived, not overwritten")
+    previews = flight_dir / "previews"
+    if previews.exists() or previews.is_symlink():
+        blockers.append("Existing previews must be preserved before regeneration")
+
+    print("PUBLICATION REVIEW (read-only):", flush=True)
+    for blocker in blockers:
+        print(f"  BLOCKED: {blocker}", flush=True)
+    if not blockers:
+        print("  Preliminary file and state checks passed; "
+              "GeoTIFF validity and publication still require operator review",
+              flush=True)
+    print("  No original files, receipts, previews, or MongoDB records changed.", flush=True)
+    return not blockers
+
+
+def inspect_retry(root, flight_id, previous_job_id, sandbox, publication_review=False):
     canonical_guid(flight_id)
     if not previous_job_id.isdigit():
         raise ValueError("Previous job ID must be numeric")
@@ -111,6 +143,10 @@ def inspect_retry(root, flight_id, previous_job_id, sandbox):
     else:
         print("RETRY IN PROGRESS OR UNRESOLVED: no promotion or resubmission")
     print("Original receipt, original products and MongoDB remain unchanged.")
+    if publication_review:
+        return int(not review_publication(
+            flight_dir, attempt, sandbox, state, exit_code
+        ))
     return 0
 
 
@@ -120,10 +156,13 @@ def main():
     parser.add_argument("--flight-id", required=True)
     parser.add_argument("--previous-job-id", required=True)
     parser.add_argument("--sandbox", choices=("atlas", "ceres"), required=True)
+    parser.add_argument("--review-publication", action="store_true",
+                        help="Report blockers without altering original or retry outputs")
     args = parser.parse_args()
     try:
         root = args.data_root.expanduser().resolve(strict=True)
-        return inspect_retry(root, args.flight_id, args.previous_job_id, args.sandbox)
+        return inspect_retry(root, args.flight_id, args.previous_job_id, args.sandbox,
+                             args.review_publication)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
