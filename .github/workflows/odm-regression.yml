@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/submit-pending-odm.py'
       - 'scripts/retry-odm.py'
+      - 'scripts/processing_provenance.py'
       - 'scripts/inspect-odm-retry.py'
       - 'scripts/odm-*-flight.sh'
       - 'scripts/register-and-submit-atlas.sh'
