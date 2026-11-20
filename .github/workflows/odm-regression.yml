@@ -7,6 +7,8 @@ on:
       - 'scripts/retry-odm.py'
       - 'scripts/inspect-odm-retry.py'
       - 'scripts/odm-*-flight.sh'
+      - 'scripts/register-and-submit-atlas.sh'
+      - 'scripts/coordinate-ceres.sh'
       - 'tests/test_odm_*.py'
       - '.github/workflows/odm-regression.yml'
   workflow_dispatch:
