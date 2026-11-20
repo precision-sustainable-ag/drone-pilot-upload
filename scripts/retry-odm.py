@@ -21,6 +21,10 @@ from uuid import UUID
 
 from importlib.util import module_from_spec, spec_from_file_location
 
+# The script is loaded from arbitrary paths by lightweight regression tests.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from processing_provenance import capture_processing_provenance
+
 SUBMITTED = "odm-submission.submitted.json"
 RESOURCE_FAILURES = {"TIMEOUT", "OUT_OF_MEMORY"}
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".tif", ".tiff"}
@@ -170,6 +174,9 @@ def plan_retry(args, repo, root):
         "image_inventory": observed, "inventory_assurance": integrity,
         "selection_reason": reason,
         "retry_workspace": str(attempt),
+        "processing_provenance": capture_processing_provenance(
+            repo, args.sandbox, Path(__file__)
+        ),
         "authorized_at": datetime.now(timezone.utc).isoformat(),
     }
     return folder, submitting, submitted, command, record
