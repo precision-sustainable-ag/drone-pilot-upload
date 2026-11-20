@@ -12,6 +12,70 @@ from uuid import UUID
 
 RECEIPT = 'odm-submission.submitted.json'
 SNAPSHOT = 'odm-slurm-accounting.json'
+RESOURCE_FAILURES = {
+    'TIMEOUT': 'Slurm walltime limit reached',
+    'OUT_OF_MEMORY': 'Slurm reported memory exhaustion',
+}
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.tif', '.tiff'}
+
+
+def review_recovery(flight_dir, snapshot, receipt=None):
+    """Inspect recovery blockers; never modify files, queue, Slurm, or MongoDB."""
+    state = snapshot['state']
+    if state not in RESOURCE_FAILURES:
+        print(f"RECOVERY NOT APPLICABLE: job state={state}; "
+              "only TIMEOUT/OUT_OF_MEMORY qualify for resource-failure review",
+              flush=True)
+        return
+
+    images = flight_dir / 'images'
+    if images.is_dir() and not images.is_symlink():
+        originals = [
+            entry for entry in images.iterdir()
+            if entry.is_file() and not entry.is_symlink()
+            and entry.suffix.lower() in IMAGE_EXTENSIONS
+        ]
+        image_count = len(originals)
+        image_bytes = sum(entry.stat().st_size for entry in originals)
+        print(f"  Original imagery: {image_count} regular images, {image_bytes} bytes", flush=True)
+        if image_count == 0:
+            print("  BLOCKED: no supported original images remain", flush=True)
+        inventory = (receipt or {}).get('image_inventory')
+        if not isinstance(inventory, dict):
+            print("  UNVERIFIED: no submission inventory; confirm originals manually", flush=True)
+        elif (type(inventory.get('image_count')) is not int or
+              type(inventory.get('total_image_bytes')) is not int):
+            print("  BLOCKED: invalid submission inventory", flush=True)
+        elif (image_count != inventory['image_count'] or
+              image_bytes != inventory['total_image_bytes']):
+            print(
+                f"  BLOCKED: inventory changed since submission "
+                f"(expected {inventory['image_count']} images, "
+                f"{inventory['total_image_bytes']} bytes)", flush=True,
+            )
+        else:
+            print("  Inventory matches submission count and bytes "
+                  "(not a checksum validation)", flush=True)
+    else:
+        print("  BLOCKED: original images directory missing or symbolic link", flush=True)
+
+    for name in ('odm', 'odm-tmp'):
+        path = flight_dir / name
+        if path.exists() or path.is_symlink():
+            print(f"  PRESERVE: existing {name} path must not be overwritten", flush=True)
+    for relative in (
+        'odm/code/odm_orthophoto/odm_orthophoto.tif',
+        'odm/veg_indices/vari_image.tif',
+        'odm/veg_indices/gli_image.tif',
+    ):
+        artifact = flight_dir / relative
+        if artifact.is_file() and artifact.stat().st_size:
+            print(f"  PRESERVE: existing product {relative}", flush=True)
+    for name in ('odm-submission.pending.json', 'odm-submission.submitting.json'):
+        if (flight_dir / name).exists() or (flight_dir / name).is_symlink():
+            print(f"  BLOCKED: conflicting queue state {name}", flush=True)
+    print("  REVIEW REQUIRED: retain submitted receipt, accounting, and old outputs; "
+          "manual recovery plan needed before any new job", flush=True)
 
 
 def guid(s):
@@ -48,7 +112,7 @@ def sacct_utc(value):
     return parsed.astimezone(timezone.utc).isoformat()
 
 
-def collect(path, dry_run):
+def collect(path, dry_run, recovery_review=False):
     flight_dir = path.parent
     if flight_dir.parent.name != 'flights':
         raise ValueError('invalid flight directory layout')
@@ -59,8 +123,10 @@ def collect(path, dry_run):
     job_id = str(receipt.get('slurm_job_id', ''))
     if not job_id.isdigit():
         raise ValueError('invalid Slurm job ID')
-    command = ['sacct', '-n', '-P', '-X', '-j', job_id,
-               '-o', 'JobIDRaw,State,ExitCode,Start,End,Partition']
+    # Include step rows: MaxRSS is typically recorded on .batch, not the
+    # top-level job. Keep the job row authoritative for state and timing.
+    command = ['sacct', '-n', '-P', '-j', job_id,
+               '-o', 'JobIDRaw,State,ExitCode,Start,End,Partition,Elapsed,ReqMem,MaxRSS']
     # Force sacct to emit UTC rather than local, timezone-less wall times.
     environment = dict(os.environ, TZ='UTC', SLURM_TIME_FORMAT='standard')
     result = subprocess.run(command, check=False, text=True, capture_output=True,
@@ -68,10 +134,17 @@ def collect(path, dry_run):
     if result.returncode:
         raise RuntimeError(f'sacct failed: {result.stderr.strip()}')
     records = [line.split('|') for line in result.stdout.splitlines() if line.strip()]
-    matching = [r for r in records if len(r) == 6 and r[0] == job_id]
+    matching = [r for r in records if len(r) == 9 and r[0] == job_id]
     if len(matching) != 1:
         raise RuntimeError(f'expected one Slurm accounting record, got {len(matching)}')
-    _, state, exit_code, start, end, partition = matching[0]
+    _, state, exit_code, start, end, partition, elapsed, req_mem, _ = matching[0]
+    # Preserve sampled step memory values verbatim, without inferring an
+    # aggregate peak from potentially different processes or sampling windows.
+    max_rss_by_step = {
+        r[0]: r[8] for r in records
+        if len(r) == 9 and r[0].startswith(job_id + '.') and r[8]
+        and r[8] not in {'Unknown', 'None'}
+    }
     started_at, ended_at = sacct_utc(start), sacct_utc(end)
     # Do not silently mislabel local Slurm time as UTC if TZ is ignored.
     if started_at and receipt.get('submitted_at'):
@@ -88,11 +161,34 @@ def collect(path, dry_run):
         'started_at': started_at,
         'ended_at': ended_at,
         'partition': partition or receipt.get('partition'),
+        'elapsed': elapsed if elapsed not in {'', 'Unknown', 'None'} else None,
+        'requested_memory': req_mem if req_mem not in {'', 'Unknown', 'None'} else None,
+        'max_rss_by_step': max_rss_by_step,
         'observed_at': datetime.now(timezone.utc).isoformat(),
     }
     if not dry_run:
         atomic_json(flight_dir / SNAPSHOT, snapshot)
     print(f"{'WOULD RECORD' if dry_run else 'RECORDED'}: {flight} job={job_id} state={snapshot['state']}", flush=True)
+    if dry_run:
+        step_usage = ', '.join(
+            f'{step}={rss}' for step, rss in sorted(max_rss_by_step.items())
+        ) or 'unavailable'
+        print(
+            f"  elapsed={snapshot['elapsed'] or 'unavailable'} "
+            f"requested_memory={snapshot['requested_memory'] or 'unavailable'} "
+            f"MaxRSS_by_step={step_usage}",
+            flush=True,
+        )
+    if snapshot['state'] in RESOURCE_FAILURES:
+        print(
+            f"RESOURCE FAILURE: {flight} job={job_id}: "
+            f"{RESOURCE_FAILURES[snapshot['state']]}. "
+            "Inspect previous outputs before an operator-approved retry; "
+            "no automatic resubmission.",
+            file=sys.stderr, flush=True,
+        )
+    if recovery_review:
+        review_recovery(flight_dir, snapshot, receipt)
 
 
 def main():
@@ -100,17 +196,25 @@ def main():
     ap.add_argument('--data-root', required=True, type=Path)
     ap.add_argument('--flight-id', help='Limit to a single flight GUID')
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--review-recovery', action='store_true',
+                    help='Read-only assessment of resource-failure recovery blockers')
     args = ap.parse_args()
+    if args.review_recovery and not (args.dry_run and args.flight_id):
+        ap.error('--review-recovery requires both --dry-run and --flight-id')
     root = args.data_root.expanduser().resolve(strict=True) / 'site-id'
     if args.flight_id:
         guid(args.flight_id)
     receipts = sorted(root.glob(f'*/flights/*/{RECEIPT}'))
+    if args.flight_id and not any(path.parent.name == args.flight_id for path in receipts):
+        print(f'ERROR: no submission receipt found for flight {args.flight_id}',
+              file=sys.stderr, flush=True)
+        return 1
     errors = 0
     for path in receipts:
         if args.flight_id and path.parent.name != args.flight_id:
             continue
         try:
-            collect(path, args.dry_run)
+            collect(path, args.dry_run, args.review_recovery)
         except Exception as exc:
             errors += 1
             print(f'ERROR: {path}: {exc}', file=sys.stderr, flush=True)

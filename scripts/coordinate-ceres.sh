@@ -56,7 +56,8 @@ apptainer exec --bind "$dpu/scripts:/opt/dpu-scripts:ro" "$sif" \
 
 echo "=== Ceres: submit pending CPU ODM jobs ==="
 python3 "$dpu/scripts/submit-pending-odm.py" \
-    --sandbox ceres --data-root "$data_root" --repo "$dpu"
+    --sandbox ceres --data-root "$data_root" --repo "$dpu" \
+    --apply-resource-profile
 
 echo "=== Ceres: collect Slurm accounting ==="
 python3 "$dpu/scripts/collect-atlas-status.py" --data-root "$data_root"
