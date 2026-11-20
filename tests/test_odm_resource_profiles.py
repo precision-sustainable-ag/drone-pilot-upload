@@ -77,5 +77,27 @@ class ResourceProfilesTest(unittest.TestCase):
             self.assertEqual(result, {"image_count": 2, "total_image_bytes": 7})
 
 
+    def test_scheduled_paths_apply_workload_profiles(self):
+        """Catch accidental regression to fixed resource coordinator settings."""
+        for script, sandbox in (
+            ("scripts/register-and-submit-atlas.sh", "atlas"),
+            ("scripts/coordinate-ceres.sh", "ceres"),
+        ):
+            with self.subTest(script=script):
+                body = (ROOT / script).read_text(encoding="utf-8")
+                self.assertIn("submit-pending-odm.py", body)
+                self.assertIn(f"--sandbox {sandbox}", body)
+                self.assertIn("--apply-resource-profile", body)
+
+    def test_atlas_direct_sbatch_defaults_match_scheduled_gpu(self):
+        """Manual sbatch should not silently switch to legacy L40S defaults."""
+        script = (ROOT / "scripts/odm-atlas-flight.sh").read_text(encoding="utf-8")
+        directives = [line.strip() for line in script.splitlines()
+                      if line.startswith("#SBATCH")]
+        self.assertIn("#SBATCH --partition=gpu-a100", directives)
+        self.assertIn("#SBATCH --gres=gpu:a100:1", directives)
+        self.assertNotIn("#SBATCH --partition=gpu-l40s", directives)
+
+
 if __name__ == "__main__":
     unittest.main()
