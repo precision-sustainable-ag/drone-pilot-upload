@@ -105,6 +105,16 @@ def collect(path, dry_run):
     if not dry_run:
         atomic_json(flight_dir / SNAPSHOT, snapshot)
     print(f"{'WOULD RECORD' if dry_run else 'RECORDED'}: {flight} job={job_id} state={snapshot['state']}", flush=True)
+    if dry_run:
+        step_usage = ', '.join(
+            f'{step}={rss}' for step, rss in sorted(max_rss_by_step.items())
+        ) or 'unavailable'
+        print(
+            f"  elapsed={snapshot['elapsed'] or 'unavailable'} "
+            f"requested_memory={snapshot['requested_memory'] or 'unavailable'} "
+            f"MaxRSS_by_step={step_usage}",
+            flush=True,
+        )
 
 
 def main():
