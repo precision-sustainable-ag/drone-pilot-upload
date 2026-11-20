@@ -59,8 +59,10 @@ def collect(path, dry_run):
     job_id = str(receipt.get('slurm_job_id', ''))
     if not job_id.isdigit():
         raise ValueError('invalid Slurm job ID')
-    command = ['sacct', '-n', '-P', '-X', '-j', job_id,
-               '-o', 'JobIDRaw,State,ExitCode,Start,End,Partition']
+    # Include step rows: MaxRSS is typically recorded on .batch, not the
+    # top-level job. Keep the job row authoritative for state and timing.
+    command = ['sacct', '-n', '-P', '-j', job_id,
+               '-o', 'JobIDRaw,State,ExitCode,Start,End,Partition,Elapsed,ReqMem,MaxRSS']
     # Force sacct to emit UTC rather than local, timezone-less wall times.
     environment = dict(os.environ, TZ='UTC', SLURM_TIME_FORMAT='standard')
     result = subprocess.run(command, check=False, text=True, capture_output=True,
@@ -68,10 +70,17 @@ def collect(path, dry_run):
     if result.returncode:
         raise RuntimeError(f'sacct failed: {result.stderr.strip()}')
     records = [line.split('|') for line in result.stdout.splitlines() if line.strip()]
-    matching = [r for r in records if len(r) == 6 and r[0] == job_id]
+    matching = [r for r in records if len(r) == 9 and r[0] == job_id]
     if len(matching) != 1:
         raise RuntimeError(f'expected one Slurm accounting record, got {len(matching)}')
-    _, state, exit_code, start, end, partition = matching[0]
+    _, state, exit_code, start, end, partition, elapsed, req_mem, _ = matching[0]
+    # Preserve sampled step memory values verbatim, without inferring an
+    # aggregate peak from potentially different processes or sampling windows.
+    max_rss_by_step = {
+        r[0]: r[8] for r in records
+        if len(r) == 9 and r[0].startswith(job_id + '.') and r[8]
+        and r[8] not in {'Unknown', 'None'}
+    }
     started_at, ended_at = sacct_utc(start), sacct_utc(end)
     # Do not silently mislabel local Slurm time as UTC if TZ is ignored.
     if started_at and receipt.get('submitted_at'):
@@ -88,6 +97,9 @@ def collect(path, dry_run):
         'started_at': started_at,
         'ended_at': ended_at,
         'partition': partition or receipt.get('partition'),
+        'elapsed': elapsed if elapsed not in {'', 'Unknown', 'None'} else None,
+        'requested_memory': req_mem if req_mem not in {'', 'Unknown', 'None'} else None,
+        'max_rss_by_step': max_rss_by_step,
         'observed_at': datetime.now(timezone.utc).isoformat(),
     }
     if not dry_run:
