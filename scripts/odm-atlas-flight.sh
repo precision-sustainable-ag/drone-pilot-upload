@@ -2,12 +2,12 @@
 
 #SBATCH --job-name=odm-atlas-flight
 #SBATCH --account=dash_drone
-#SBATCH --partition=gpu-l40s
+#SBATCH --partition=gpu-a100
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64G
-#SBATCH --gres=gpu:l40s:1
+#SBATCH --gres=gpu:a100:1
 #SBATCH --time=01:00:00
 #SBATCH --output=odm-atlas-flight-%j.out
 #SBATCH --error=odm-atlas-flight-%j.err
