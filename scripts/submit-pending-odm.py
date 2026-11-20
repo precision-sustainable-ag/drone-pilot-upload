@@ -25,8 +25,9 @@ REGISTERED = "mongo-registration.done.json"
 JOB_ID_PATTERN = re.compile(r"^(\d+)(?:;[A-Za-z0-9_.-]+)?$")
 IMAGE_EXTENSIONS = frozenset((".jpg", ".jpeg", ".tif", ".tiff"))
 
-# Initial sizing *proposals*, deliberately NOT used for sbatch yet.
-# Thresholds are provisional workload buckets, not validated runtime estimates.
+# Provisional sizing profiles. They affect sbatch only with the explicit
+# --apply-resource-profile opt-in; scheduled coordinators retain old defaults.
+# Thresholds are workload buckets, not validated runtime estimates.
 # Keep CPUs at four until ODM --max-concurrency is adjusted and tested.
 GIB = 1024 ** 3
 RESOURCE_PROFILES = {
@@ -56,7 +57,7 @@ RESOURCE_PROFILES = {
 
 
 def preview_resource_profile(sandbox, inventory):
-    """Suggest a conservative bucket; never change submission resources."""
+    """Select a provisional workload bucket, without Slurm side effects."""
     count = inventory["image_count"]
     total_bytes = inventory["total_image_bytes"]
     for profile in RESOURCE_PROFILES[sandbox]:
@@ -143,6 +144,10 @@ def main():
     parser.add_argument("--partition", default=None)
     parser.add_argument("--gres", default=None)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--apply-resource-profile", action="store_true",
+        help="Opt in to profile-derived sbatch resources; scheduled defaults are unchanged",
+    )
     args = parser.parse_args()
 
     root = args.data_root.expanduser().resolve(strict=True)
@@ -152,6 +157,8 @@ def main():
     gres = args.gres if args.gres is not None else (None if args.sandbox == "ceres" else "gpu:a100:1")
     if args.sandbox == "ceres" and gres:
         parser.error("Ceres submission is CPU-only; --gres is not allowed")
+    if args.apply_resource_profile and (args.partition is not None or args.gres is not None):
+        parser.error("--partition/--gres cannot be combined with --apply-resource-profile")
     if not job_script.is_file():
         parser.error(f"ODM job script not found: {job_script}")
     id_root = root / "site-id"
@@ -181,17 +188,21 @@ def main():
         for path in pending:
             try:
                 org, flight, request, inventory = inspect(path)
+                profile, reason = preview_resource_profile(args.sandbox, inventory)
+                effective_partition = profile["partition"] if args.apply_resource_profile else partition
+                effective_gres = profile["gres"] if args.apply_resource_profile else gres
                 if args.dry_run:
+                    mode = "SELECTED PROFILE" if args.apply_resource_profile else "CURRENT SETTINGS"
                     print(
-                        f"WOULD SUBMIT WITH CURRENT SETTINGS: {flight} "
-                        f"({partition}, {gres or 'CPU only'}); "
+                        f"WOULD SUBMIT WITH {mode}: {flight} "
+                        f"({effective_partition}, {effective_gres or 'CPU only'}); "
                         f"images={inventory['image_count']}; "
                         f"image_bytes={inventory['total_image_bytes']}",
                         flush=True,
                     )
-                    profile, reason = preview_resource_profile(args.sandbox, inventory)
+                    label = "WOULD APPLY" if args.apply_resource_profile else "PREVIEW ONLY (not applied)"
                     print(
-                        f"PROFILE PREVIEW ONLY (not applied): {flight}: "
+                        f"PROFILE {label}: {flight}: "
                         f"{profile['name']} partition={profile['partition']} "
                         f"gres={profile['gres'] or 'none'} cpus={profile['cpus']} "
                         f"mem={profile['mem']} time={profile['time']}; "
@@ -206,15 +217,21 @@ def main():
                 path.rename(submitting)
                 command = [
                     "sbatch", "--parsable",
-                    f"--partition={partition}",
+                    f"--partition={effective_partition}",
                     f"--job-name=dpu-{flight}",
                     f"--chdir={path.parent}",
                     f"--output={path.parent}/odm-slurm-%j.out",
                     f"--error={path.parent}/odm-slurm-%j.err",
                     str(job_script), org, flight,
                 ]
-                if gres:
-                    command.insert(3, f"--gres={gres}")
+                if effective_gres:
+                    command.insert(3, f"--gres={effective_gres}")
+                if args.apply_resource_profile:
+                    command[3:3] = [
+                        f"--cpus-per-task={profile['cpus']}",
+                        f"--mem={profile['mem']}",
+                        f"--time={profile['time']}",
+                    ]
                 # Keep MongoDB credentials out of the Slurm job environment.
                 environment = {
                     key: value for key, value in os.environ.items()
@@ -236,10 +253,19 @@ def main():
                 receipt.update({
                     "image_inventory": inventory,
                     "slurm_job_id": job_id,
-                    "partition": partition,
-                    "gres": gres,
+                    "partition": effective_partition,
+                    "gres": effective_gres,
                     "submitted_at": datetime.now(timezone.utc).isoformat(),
                 })
+                if args.apply_resource_profile:
+                    receipt["resource_profile"] = {"name": profile["name"], "reason": reason}
+                    receipt["requested_resources"] = {
+                        "partition": effective_partition,
+                        "gres": effective_gres,
+                        "cpus_per_task": profile["cpus"],
+                        "memory": profile["mem"],
+                        "walltime": profile["time"],
+                    }
                 atomic_json(submitted, receipt)
                 submitting.unlink()
                 print(f"SUBMITTED: {flight} Slurm job {job_id}", flush=True)
