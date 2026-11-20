@@ -74,6 +74,29 @@ def preview_resource_profile(sandbox, inventory):
 
 
 
+
+def build_sbatch_command(job_script, flight_dir, org, flight, partition, gres, profile=None):
+    """Build a Slurm request without submitting or modifying anything."""
+    command = [
+        "sbatch", "--parsable",
+        f"--partition={partition}",
+        f"--job-name=dpu-{flight}",
+        f"--chdir={flight_dir}",
+        f"--output={flight_dir}/odm-slurm-%j.out",
+        f"--error={flight_dir}/odm-slurm-%j.err",
+        str(job_script), org, flight,
+    ]
+    if gres:
+        command.insert(3, f"--gres={gres}")
+    if profile is not None:
+        command[3:3] = [
+            f"--cpus-per-task={profile['cpus']}",
+            f"--mem={profile['mem']}",
+            f"--time={profile['time']}",
+        ]
+    return command
+
+
 def guid(value):
     value = str(value)
     if str(UUID(value)) != value:
@@ -215,23 +238,11 @@ def main():
                 # Before sbatch, consume the pending request. An interruption
                 # here leaves .submitting for explicit human reconciliation.
                 path.rename(submitting)
-                command = [
-                    "sbatch", "--parsable",
-                    f"--partition={effective_partition}",
-                    f"--job-name=dpu-{flight}",
-                    f"--chdir={path.parent}",
-                    f"--output={path.parent}/odm-slurm-%j.out",
-                    f"--error={path.parent}/odm-slurm-%j.err",
-                    str(job_script), org, flight,
-                ]
-                if effective_gres:
-                    command.insert(3, f"--gres={effective_gres}")
-                if args.apply_resource_profile:
-                    command[3:3] = [
-                        f"--cpus-per-task={profile['cpus']}",
-                        f"--mem={profile['mem']}",
-                        f"--time={profile['time']}",
-                    ]
+                command = build_sbatch_command(
+                    job_script, path.parent, org, flight,
+                    effective_partition, effective_gres,
+                    profile if args.apply_resource_profile else None,
+                )
                 # Keep MongoDB credentials out of the Slurm job environment.
                 environment = {
                     key: value for key, value in os.environ.items()
