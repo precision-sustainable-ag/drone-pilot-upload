@@ -19,7 +19,7 @@ RESOURCE_FAILURES = {
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.tif', '.tiff'}
 
 
-def review_recovery(flight_dir, snapshot):
+def review_recovery(flight_dir, snapshot, receipt=None):
     """Inspect recovery blockers; never modify files, queue, Slurm, or MongoDB."""
     state = snapshot['state']
     if state not in RESOURCE_FAILURES:
@@ -30,12 +30,32 @@ def review_recovery(flight_dir, snapshot):
 
     images = flight_dir / 'images'
     if images.is_dir() and not images.is_symlink():
-        image_count = sum(
-            1 for entry in images.iterdir()
+        originals = [
+            entry for entry in images.iterdir()
             if entry.is_file() and not entry.is_symlink()
             and entry.suffix.lower() in IMAGE_EXTENSIONS
-        )
-        print(f"  Original imagery: {image_count} regular images present", flush=True)
+        ]
+        image_count = len(originals)
+        image_bytes = sum(entry.stat().st_size for entry in originals)
+        print(f"  Original imagery: {image_count} regular images, {image_bytes} bytes", flush=True)
+        if image_count == 0:
+            print("  BLOCKED: no supported original images remain", flush=True)
+        inventory = (receipt or {}).get('image_inventory')
+        if not isinstance(inventory, dict):
+            print("  UNVERIFIED: no submission inventory; confirm originals manually", flush=True)
+        elif (type(inventory.get('image_count')) is not int or
+              type(inventory.get('total_image_bytes')) is not int):
+            print("  BLOCKED: invalid submission inventory", flush=True)
+        elif (image_count != inventory['image_count'] or
+              image_bytes != inventory['total_image_bytes']):
+            print(
+                f"  BLOCKED: inventory changed since submission "
+                f"(expected {inventory['image_count']} images, "
+                f"{inventory['total_image_bytes']} bytes)", flush=True,
+            )
+        else:
+            print("  Inventory matches submission count and bytes "
+                  "(not a checksum validation)", flush=True)
     else:
         print("  BLOCKED: original images directory missing or symbolic link", flush=True)
 
@@ -168,7 +188,7 @@ def collect(path, dry_run, recovery_review=False):
             file=sys.stderr, flush=True,
         )
     if recovery_review:
-        review_recovery(flight_dir, snapshot)
+        review_recovery(flight_dir, snapshot, receipt)
 
 
 def main():
