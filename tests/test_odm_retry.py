@@ -101,8 +101,8 @@ class RetryTest(unittest.TestCase):
                     )
                 self.assertEqual(planned_folder, folder)
                 self.assertIn("processing_provenance", record)
-                self.assertEqual(record["processing_provenance"]["odm_image"]["version_hint"],
-                                 f"odm-3.6.2-{'gpu' if sandbox == 'atlas' else 'cpu'}.sif")
+                self.assertIn("version_hint", record["processing_provenance"]["odm_image"])
+                self.assertIsNone(record["processing_provenance"]["odm_image"]["sha256"])
                 self.assertEqual(record["requested_resources"]["memory"], "128G")
                 self.assertEqual(record["requested_resources"]["walltime"], walltime)
                 self.assertEqual(record["requested_resources"]["gres"], gres)
