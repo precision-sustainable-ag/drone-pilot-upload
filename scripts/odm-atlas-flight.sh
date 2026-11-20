@@ -14,9 +14,17 @@
 
 set -euo pipefail
 
-if [[ $# -ne 2 ]]; then
-    echo "Usage: sbatch $0 ORGANIZATION_GUID FLIGHT_GUID" >&2
+if [[ $# -ne 2 && $# -ne 4 ]]; then
+    echo "Usage: sbatch $0 ORGANIZATION_GUID FLIGHT_GUID [--retry-from-job FAILED_JOB_ID]" >&2
     exit 2
+fi
+retry_from_job=""
+if [[ $# -eq 4 ]]; then
+    if [[ "$3" != "--retry-from-job" || ! "$4" =~ ^[0-9]+$ ]]; then
+        echo "ERROR: Retry requires --retry-from-job followed by a numeric failed job ID" >&2
+        exit 2
+    fi
+    retry_from_job="$4"
 fi
 
 organization_id="$1"
@@ -37,6 +45,16 @@ flight_root="${data_root}/site-id/${organization_id}/flights/${flight_id}"
 images_dir="${flight_root}/images"
 output_dir="${flight_root}/odm"
 tmp_dir="${flight_root}/odm-tmp"
+if [[ -n "$retry_from_job" ]]; then
+    retry_parent="${flight_root}/odm-retries"
+    if [[ -L "$retry_parent" ]]; then
+        echo "ERROR: Retry parent must not be a symbolic link: $retry_parent" >&2
+        exit 3
+    fi
+    attempt_root="${retry_parent}/retry-${retry_from_job}"
+    output_dir="${attempt_root}/odm"
+    tmp_dir="${attempt_root}/odm-tmp"
+fi
 
 [[ -f "${flight_root}/mongo-registration.done.json" ]] || {
     echo "ERROR: Flight has not been registered in MongoDB: ${flight_id}" >&2
@@ -82,6 +100,14 @@ echo "Images ($image_count): $images_dir"
 echo "ODM output: $output_dir"
 echo "Temporary directory: $tmp_dir"
 
+# Claim a fresh retry workspace atomically. Existing attempts are never reused.
+if [[ -n "$retry_from_job" ]]; then
+    mkdir -p "$retry_parent"
+    if ! mkdir "$attempt_root"; then
+        echo "ERROR: Retry workspace already exists; reconcile before resubmitting: $attempt_root" >&2
+        exit 3
+    fi
+fi
 mkdir -p "$output_dir/code/images" "$tmp_dir"
 
 apptainer run \
