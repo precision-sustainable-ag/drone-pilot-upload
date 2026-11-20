@@ -16,6 +16,46 @@ RESOURCE_FAILURES = {
     'TIMEOUT': 'Slurm walltime limit reached',
     'OUT_OF_MEMORY': 'Slurm reported memory exhaustion',
 }
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.tif', '.tiff'}
+
+
+def review_recovery(flight_dir, snapshot):
+    """Inspect recovery blockers; never modify files, queue, Slurm, or MongoDB."""
+    state = snapshot['state']
+    if state not in RESOURCE_FAILURES:
+        print(f"RECOVERY NOT APPLICABLE: job state={state}; "
+              "only TIMEOUT/OUT_OF_MEMORY qualify for resource-failure review",
+              flush=True)
+        return
+
+    images = flight_dir / 'images'
+    if images.is_dir() and not images.is_symlink():
+        image_count = sum(
+            1 for entry in images.iterdir()
+            if entry.is_file() and not entry.is_symlink()
+            and entry.suffix.lower() in IMAGE_EXTENSIONS
+        )
+        print(f"  Original imagery: {image_count} regular images present", flush=True)
+    else:
+        print("  BLOCKED: original images directory missing or symbolic link", flush=True)
+
+    for name in ('odm', 'odm-tmp'):
+        path = flight_dir / name
+        if path.exists() or path.is_symlink():
+            print(f"  PRESERVE: existing {name} path must not be overwritten", flush=True)
+    for relative in (
+        'odm/code/odm_orthophoto/odm_orthophoto.tif',
+        'odm/veg_indices/vari_image.tif',
+        'odm/veg_indices/gli_image.tif',
+    ):
+        artifact = flight_dir / relative
+        if artifact.is_file() and artifact.stat().st_size:
+            print(f"  PRESERVE: existing product {relative}", flush=True)
+    for name in ('odm-submission.pending.json', 'odm-submission.submitting.json'):
+        if (flight_dir / name).exists() or (flight_dir / name).is_symlink():
+            print(f"  BLOCKED: conflicting queue state {name}", flush=True)
+    print("  REVIEW REQUIRED: retain submitted receipt, accounting, and old outputs; "
+          "manual recovery plan needed before any new job", flush=True)
 
 
 def guid(s):
@@ -52,7 +92,7 @@ def sacct_utc(value):
     return parsed.astimezone(timezone.utc).isoformat()
 
 
-def collect(path, dry_run):
+def collect(path, dry_run, recovery_review=False):
     flight_dir = path.parent
     if flight_dir.parent.name != 'flights':
         raise ValueError('invalid flight directory layout')
@@ -127,6 +167,8 @@ def collect(path, dry_run):
             "no automatic resubmission.",
             file=sys.stderr, flush=True,
         )
+    if recovery_review:
+        review_recovery(flight_dir, snapshot)
 
 
 def main():
@@ -134,7 +176,11 @@ def main():
     ap.add_argument('--data-root', required=True, type=Path)
     ap.add_argument('--flight-id', help='Limit to a single flight GUID')
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--review-recovery', action='store_true',
+                    help='Read-only assessment of resource-failure recovery blockers')
     args = ap.parse_args()
+    if args.review_recovery and not (args.dry_run and args.flight_id):
+        ap.error('--review-recovery requires both --dry-run and --flight-id')
     root = args.data_root.expanduser().resolve(strict=True) / 'site-id'
     if args.flight_id:
         guid(args.flight_id)
@@ -148,7 +194,7 @@ def main():
         if args.flight_id and path.parent.name != args.flight_id:
             continue
         try:
-            collect(path, args.dry_run)
+            collect(path, args.dry_run, args.review_recovery)
         except Exception as exc:
             errors += 1
             print(f'ERROR: {path}: {exc}', file=sys.stderr, flush=True)
