@@ -117,6 +117,10 @@ def main():
     if args.flight_id:
         guid(args.flight_id)
     receipts = sorted(root.glob(f'*/flights/*/{RECEIPT}'))
+    if args.flight_id and not any(path.parent.name == args.flight_id for path in receipts):
+        print(f'ERROR: no submission receipt found for flight {args.flight_id}',
+              file=sys.stderr, flush=True)
+        return 1
     errors = 0
     for path in receipts:
         if args.flight_id and path.parent.name != args.flight_id:
