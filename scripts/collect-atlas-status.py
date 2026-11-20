@@ -12,6 +12,10 @@ from uuid import UUID
 
 RECEIPT = 'odm-submission.submitted.json'
 SNAPSHOT = 'odm-slurm-accounting.json'
+RESOURCE_FAILURES = {
+    'TIMEOUT': 'Slurm walltime limit reached',
+    'OUT_OF_MEMORY': 'Slurm reported memory exhaustion',
+}
 
 
 def guid(s):
@@ -114,6 +118,14 @@ def collect(path, dry_run):
             f"requested_memory={snapshot['requested_memory'] or 'unavailable'} "
             f"MaxRSS_by_step={step_usage}",
             flush=True,
+        )
+    if snapshot['state'] in RESOURCE_FAILURES:
+        print(
+            f"RESOURCE FAILURE: {flight} job={job_id}: "
+            f"{RESOURCE_FAILURES[snapshot['state']]}. "
+            "Inspect previous outputs before an operator-approved retry; "
+            "no automatic resubmission.",
+            file=sys.stderr, flush=True,
         )
 
 
