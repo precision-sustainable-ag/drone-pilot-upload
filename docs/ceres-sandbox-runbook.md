@@ -51,7 +51,7 @@ The coordinator uses a nonblocking `$DPU_DATA_ROOT/.dpu-ceres-coordinator.lock` 
 
 ## Important safeguards and recovery
 
-- Slurm submission uses `scripts/odm-ceres-flight.sh` (4 CPUs, 64 GB, 8-hour limit, `ceres` partition, no GPU). The submitter passes absolute `--output` / `--error` paths inside each flight directory, correcting the manual first run's log placement.
+- The Ceres batch script retains a 4-CPU, 64-GB, 8-hour baseline for direct/manual Slurm submission. The **Issue #28 feature-branch coordinator** now opts into workload-aware small/medium/large CPU profiles with explicit Slurm resource arguments; see [Workload-aware ODM sizing and resource-failure recovery](odm-workload-recovery.md). This change is **not yet deployed or validated for live large workloads**. The submitter passes absolute `--output` / `--error` paths inside each flight directory, correcting the manual first run's log placement.
 - Submission transitions to `.submitting.json` **before** `sbatch`. If interrupted, do not blindly resubmit; reconcile the ambiguous state manually to avoid duplicate jobs.
 - The ODM job refuses existing `odm` or `odm-tmp` directories, even after a failure. Never delete them automatically.
 - Postprocessing does not overwrite nonempty VARI/GLI outputs. A missing or partial index artifact requires inspection instead of an automatic retry.
