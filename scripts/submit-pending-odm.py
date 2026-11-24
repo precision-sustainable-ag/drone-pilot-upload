@@ -21,6 +21,7 @@ from uuid import UUID
 # This script is also loaded through importlib by the regression tests.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from processing_provenance import capture_processing_provenance
+from queue_aware_odm import choose, OPTIONS
 
 PENDING = "odm-submission.pending.json"
 SUBMITTING = "odm-submission.submitting.json"
@@ -175,7 +176,21 @@ def main():
         "--apply-resource-profile", action="store_true",
         help="Opt in to profile-derived sbatch resources; scheduled defaults are unchanged",
     )
+    parser.add_argument("--queue-aware", action="store_true")
+    parser.add_argument("--allow-candidate", action="append", default=[])
+    parser.add_argument("--compare-inventory", nargs=2, type=int,
+                        metavar=("IMAGE_COUNT", "TOTAL_BYTES"))
     args = parser.parse_args()
+    if args.queue_aware and not args.apply_resource_profile:
+        parser.error("--queue-aware requires --apply-resource-profile")
+    if args.allow_candidate and not args.queue_aware:
+        parser.error("--allow-candidate requires --queue-aware")
+    if set(args.allow_candidate) - set(OPTIONS[args.sandbox]):
+        parser.error("Unknown candidate for sandbox")
+    if args.compare_inventory and not (args.dry_run and args.queue_aware):
+        parser.error("--compare-inventory requires --dry-run and --queue-aware")
+    if args.compare_inventory and min(args.compare_inventory) <= 0:
+        parser.error("Inventory values must be positive")
 
     root = args.data_root.expanduser().resolve(strict=True)
     repo = args.repo.expanduser().resolve(strict=True)
@@ -191,6 +206,23 @@ def main():
     id_root = root / "site-id"
     if not id_root.is_dir():
         parser.error(f"GUID storage directory not found: {id_root}")
+
+    probe_env = {
+        key: value for key, value in os.environ.items()
+        if "MONGODB" not in key.upper() and key != "DPU_SECRETS_FILE"
+    }
+    probe_env.update(DPU_REPO=str(repo), DPU_DATA_ROOT=str(root))
+    if args.compare_inventory:
+        inventory = dict(zip(("image_count", "total_image_bytes"), args.compare_inventory))
+        profile, _ = preview_resource_profile(args.sandbox, inventory)
+        def hypothetical(candidate):
+            fake = "00000000-0000-0000-0000-000000000000"
+            return build_sbatch_command(job_script, root, fake, fake,
+                                        candidate["partition"], candidate["gres"], candidate)
+        _, decision = choose(args.sandbox, profile, inventory, args.allow_candidate,
+                             hypothetical, env=probe_env)
+        print(json.dumps(decision, indent=2))
+        return 0
 
     # A shared lock serializes concurrent submitter invocations.
     # The dry run intentionally does not create or modify anything.
@@ -216,6 +248,15 @@ def main():
             try:
                 org, flight, request, inventory = inspect(path)
                 profile, reason = preview_resource_profile(args.sandbox, inventory)
+                decision = None
+                if args.queue_aware:
+                    def candidate_command(candidate):
+                        return build_sbatch_command(job_script, path.parent, org, flight,
+                                                    candidate["partition"], candidate["gres"], candidate)
+                    profile, decision = choose(args.sandbox, profile, inventory,
+                                               args.allow_candidate, candidate_command,
+                                               env=probe_env)
+                    print(json.dumps(decision, sort_keys=True), flush=True)
                 effective_partition = profile["partition"] if args.apply_resource_profile else partition
                 effective_gres = profile["gres"] if args.apply_resource_profile else gres
                 if args.dry_run:
@@ -288,6 +329,8 @@ def main():
                         "memory": profile["mem"],
                         "walltime": profile["time"],
                     }
+                if decision is not None:
+                    receipt["queue_aware_selection"] = decision
                 atomic_json(submitted, receipt)
                 submitting.unlink()
                 print(f"SUBMITTED: {flight} Slurm job {job_id}", flush=True)
