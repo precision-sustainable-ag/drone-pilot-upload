@@ -33,5 +33,5 @@
     # Profile selection is based on the queued flight image inventory.
     python3 "$dpu/scripts/submit-pending-odm.py" \
         --sandbox atlas --data-root "$data_root" --repo "$dpu" \
-        --apply-resource-profile
+        --apply-resource-profile --coordinator-policy
 )

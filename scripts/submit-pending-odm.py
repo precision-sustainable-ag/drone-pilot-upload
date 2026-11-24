@@ -21,7 +21,7 @@ from uuid import UUID
 # This script is also loaded through importlib by the regression tests.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from processing_provenance import capture_processing_provenance
-from queue_aware_odm import choose, OPTIONS
+from queue_aware_odm import choose, OPTIONS, load_coordinator_policy
 
 PENDING = "odm-submission.pending.json"
 SUBMITTING = "odm-submission.submitting.json"
@@ -177,10 +177,21 @@ def main():
         help="Opt in to profile-derived sbatch resources; scheduled defaults are unchanged",
     )
     parser.add_argument("--queue-aware", action="store_true")
+    parser.add_argument("--coordinator-policy", action="store_true",
+                        help="Read the cluster's local opt-in policy for scheduled submissions")
     parser.add_argument("--allow-candidate", action="append", default=[])
     parser.add_argument("--compare-inventory", nargs=2, type=int,
                         metavar=("IMAGE_COUNT", "TOTAL_BYTES"))
     args = parser.parse_args()
+    if args.coordinator_policy:
+        if args.queue_aware or args.allow_candidate or not args.apply_resource_profile:
+            parser.error("--coordinator-policy requires --apply-resource-profile and cannot be combined with explicit queue-aware options")
+        try:
+            args.queue_aware, args.allow_candidate = load_coordinator_policy(args.sandbox)
+        except (OSError, ValueError) as exc:
+            parser.error(f"Invalid coordinator policy: {exc}")
+        print(f"Queue-aware coordinator policy: {'enabled' if args.queue_aware else 'disabled'}; "
+              f"alternatives={','.join(args.allow_candidate) or 'none'}", flush=True)
     if args.queue_aware and not args.apply_resource_profile:
         parser.error("--queue-aware requires --apply-resource-profile")
     if args.allow_candidate and not args.queue_aware:

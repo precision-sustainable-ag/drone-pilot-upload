@@ -1,5 +1,7 @@
 """Opt-in queue-aware ODM selection using provisional runtime estimates."""
 import re
+import os
+from pathlib import Path
 import subprocess
 from datetime import datetime, timezone, timedelta
 
@@ -68,3 +70,40 @@ def choose(sandbox, profile, inventory, allowed, command_for, *, env=None,
     _, _, name, candidate = min(ranked)
     decision.update(selected=name, reason="Earliest estimated completion among eligible resources")
     return candidate, decision
+
+
+def load_coordinator_policy(sandbox, *, home=None, environ=None):
+    """Read non-executable, cluster-local configuration. Missing means disabled.
+
+    Environment variables override the file, including explicit disable (0).
+    Invalid configuration stops submissions rather than silently enabling resources.
+    """
+    environ = os.environ if environ is None else environ
+    home = Path.home() if home is None else Path(home)
+    path = home / ".config" / "drone-pilot-upload" / f"{sandbox}-sandbox" / "queue-aware.env"
+    values = {}
+    try:
+        content = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        content = ""
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, value = line.partition("=")
+        if not sep or key not in ("DPU_QUEUE_AWARE", "DPU_QUEUE_CANDIDATES") or key in values:
+            raise ValueError(f"Unsupported or duplicate setting in {path}")
+        values[key] = value.strip()
+    for key in ("DPU_QUEUE_AWARE", "DPU_QUEUE_CANDIDATES"):
+        if key in environ:
+            values[key] = environ[key]
+    enabled = values.get("DPU_QUEUE_AWARE", "0")
+    if enabled not in ("0", "1"):
+        raise ValueError("DPU_QUEUE_AWARE must be 0 or 1")
+    if enabled == "0":
+        return False, []
+    raw = values.get("DPU_QUEUE_CANDIDATES", "")
+    candidates = [value.strip() for value in raw.split(",")] if raw else []
+    if set(candidates) - set(OPTIONS[sandbox]):
+        raise ValueError("Unknown DPU_QUEUE_CANDIDATES entry for sandbox")
+    return True, list(dict.fromkeys(candidates))
