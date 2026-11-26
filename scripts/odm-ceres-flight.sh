@@ -117,7 +117,7 @@ apptainer run \
     --orthophoto-compression LZW \
     --feature-type sift \
     --pc-quality medium \
-    --max-concurrency 4
+    --max-concurrency "${SLURM_CPUS_PER_TASK:-4}"
 
 orthophoto="${output_dir}/code/odm_orthophoto/odm_orthophoto.tif"
 [[ -s "$orthophoto" ]] || {
